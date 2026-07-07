@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NEU e码通</string>
+    <string name="ecode_widget_description">NEU e码通二维码与余额小组件</string>
+</resources>

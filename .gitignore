@@ -1,0 +1,61 @@
+# Gradle / Android build outputs
+.gradle/
+build/
+**/build/
+
+# Local machine / SDK config
+local.properties
+*.iml
+.idea/
+
+# Signing keys and private configuration
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# Protocol/private key material - never commit real values
+private-keys/
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+!gradle.properties
+
+# Generated artifacts
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Private backend/deployment sources are not part of the public Android client repo
+/backend/
+/private-backend/
+/worker/
+/workers/
+/cloudflare/
+/wrangler.toml
+/wrangler.json
+/wrangler.jsonc
+/.wrangler/
+/.dev.vars
+/.dev.vars.*
+/deploy/
+/scripts/deploy*
+/release-assets/
+
+# Logs
+*.log
+neuecode_network.log
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.kotlin/
+captures/
+.cxx/
+.externalNativeBuild/
+*.hprof

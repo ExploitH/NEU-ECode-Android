@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- NEU Pay's legacy H5 portal can still emit narrow http://pay.neu.edu.cn
+         pages/resources from inside its authenticated WebView flow. Keep the
+         exception scoped to the recharge host instead of enabling global HTTP. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">pay.neu.edu.cn</domain>
+    </domain-config>
+</network-security-config>
