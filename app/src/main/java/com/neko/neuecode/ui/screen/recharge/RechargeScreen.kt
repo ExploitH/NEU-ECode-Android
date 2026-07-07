@@ -53,10 +53,11 @@ import java.util.Date
 import java.util.Locale
 
 private const val RECHARGE_URL = "https://pay.neu.edu.cn/openPortal"
+private const val RECHARGE_LOGIN_URL = "https://pay.neu.edu.cn/drCasLogin?redirectUrl=openBindInfo"
 private const val PAY_HOST_PREFIX = "https://pay.neu.edu.cn"
 private const val PAY_HTTP_HOST_PREFIX = "http://pay.neu.edu.cn"
 private const val WX_CALLBACK = "https://pay.neu.edu.cn/wx/callback"
-private const val CHROME_ANDROID_UA = "Mozilla/5.0 (Linux; Android 13; V2231A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
+private const val APP_UA_SUFFIX = " NEU-eCode-Kotlin/5.33"
 
 @Composable
 fun RechargeScreen() {
@@ -170,7 +171,9 @@ private fun configureRechargeWebView(webView: WebView) {
         javaScriptEnabled = true
         domStorageEnabled = true
         databaseEnabled = true
-        userAgentString = CHROME_ANDROID_UA
+        if (!userAgentString.contains("NEU-eCode-Kotlin")) {
+            userAgentString += APP_UA_SUFFIX
+        }
         javaScriptCanOpenWindowsAutomatically = true
         setSupportMultipleWindows(true)
         cacheMode = WebSettings.LOAD_DEFAULT
@@ -180,10 +183,13 @@ private fun configureRechargeWebView(webView: WebView) {
         loadsImagesAutomatically = true
         blockNetworkImage = false
         mediaPlaybackRequiresUserGesture = false
-        builtInZoomControls = false
+        setSupportZoom(true)
+        builtInZoomControls = true
         displayZoomControls = false
         allowContentAccess = true
         allowFileAccess = false
+        textZoom = 100
+        defaultFontSize = 16
         layoutAlgorithm = WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
     }
     webView.isHorizontalScrollBarEnabled = false
@@ -321,6 +327,11 @@ private fun createRechargeWebViewClient(
                 )
                 setLoading(false)
                 appendRechargeLog(if (isPopup) "RECHARGE_POPUP_FINISHED" else "RECHARGE_PAGE_FINISHED", it)
+                if (!isPopup && it.isRechargeLoginShellUrl()) {
+                    setStatusText("进入统一身份认证…")
+                    appendRechargeLog("RECHARGE_AUTO_CAS_LOGIN", RECHARGE_LOGIN_URL)
+                    view?.postDelayed({ view.loadUrl(RECHARGE_LOGIN_URL) }, 250)
+                }
                 view?.evaluateJavascript(RECHARGE_DOM_PROBE_JS) { result ->
                     appendRechargeLog(if (isPopup) "RECHARGE_POPUP_DOM" else "RECHARGE_PAGE_DOM", sanitizeJsResult(result))
                 }
@@ -404,6 +415,11 @@ private fun createRechargeWebViewClient(
     }
 }
 
+private fun String.isRechargeLoginShellUrl(): Boolean {
+    return startsWith("https://pay.neu.edu.cn/tologin.html") ||
+            startsWith("http://pay.neu.edu.cn/tologin.html")
+}
+
 private fun String.isUsefulRechargeUrl(): Boolean {
     if (isBlank()) return false
     if (equals("about:blank", ignoreCase = true)) return false
@@ -449,17 +465,25 @@ private const val RECHARGE_DOM_PROBE_JS = """
   try {
     var body = document.body;
     var visibleText = body ? (body.innerText || '').replace(/\s+/g, ' ').slice(0, 260) : '';
+    var iframeList = Array.prototype.slice.call(document.getElementsByTagName('iframe')).map(function(frame){
+      return frame.src || frame.getAttribute('src') || '';
+    }).slice(0, 8);
+    var center = document.elementFromPoint(Math.floor(window.innerWidth / 2), Math.floor(window.innerHeight / 2));
     var data = {
       title: document.title || '',
       ready: document.readyState || '',
       url: location.href || '',
       bodyTextLen: body ? (body.innerText || '').length : -1,
       bodyHtmlLen: body ? (body.innerHTML || '').length : -1,
+      bodyClient: body ? (body.clientWidth + 'x' + body.clientHeight) : '',
+      bodyScroll: body ? (body.scrollWidth + 'x' + body.scrollHeight) : '',
       iframes: document.getElementsByTagName('iframe').length,
+      iframeSrc: iframeList,
       frames: window.frames ? window.frames.length : 0,
       scripts: document.scripts ? document.scripts.length : 0,
       links: document.links ? document.links.length : 0,
       viewport: window.innerWidth + 'x' + window.innerHeight,
+      centerTag: center ? (center.tagName + '#' + (center.id || '') + '.' + (center.className || '')) : '',
       sample: visibleText
     };
     return JSON.stringify(data);
