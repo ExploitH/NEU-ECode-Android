@@ -27,14 +27,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -59,14 +62,39 @@ private const val PAY_HTTP_HOST_PREFIX = "http://pay.neu.edu.cn"
 private const val WX_CALLBACK = "https://pay.neu.edu.cn/wx/callback"
 private const val APP_UA_SUFFIX = " NEU-eCode-Kotlin/5.33"
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RechargeScreen() {
+fun RechargeScreen(
+    onBack: (() -> Unit)? = null,
+) {
     var currentUrl by rememberSaveable { mutableStateOf(RECHARGE_URL) }
     var statusText by rememberSaveable { mutableStateOf("等待页面加载") }
     var isLoading by rememberSaveable { mutableStateOf(true) }
     var reloadKey by rememberSaveable { mutableIntStateOf(0) }
 
+    fun reloadRecharge() {
+        currentUrl = RECHARGE_URL
+        statusText = "重新加载充值页…"
+        isLoading = true
+        reloadKey += 1
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
+        if (onBack != null) {
+            TopAppBar(
+                title = { Text("校园卡充值") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { reloadRecharge() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
+                },
+            )
+        }
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -101,12 +129,7 @@ fun RechargeScreen() {
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                     )
                 }
-                IconButton(onClick = {
-                    currentUrl = RECHARGE_URL
-                    statusText = "重新加载充值页…"
-                    isLoading = true
-                    reloadKey += 1
-                }) {
+                IconButton(onClick = { reloadRecharge() }) {
                     if (isLoading) {
                         CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
                     } else {

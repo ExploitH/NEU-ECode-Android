@@ -2,28 +2,43 @@ package com.neko.neuecode.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.local.datastore.UserPreferences
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
-import com.neko.neuecode.ui.screen.ecode.ECodeScreen
+import com.neko.neuecode.ui.screen.paycode.ECodeWebViewScreen
+import com.neko.neuecode.ui.screen.paycode.PayCodeScreen
 import com.neko.neuecode.ui.screen.personal.PersonalScreen
 import com.neko.neuecode.ui.screen.recharge.RechargeScreen
+import com.neko.neuecode.ui.screen.schedule.JwxtScheduleScreen
 
-sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
-    object ECode : Screen("ecode", "e码通", Icons.Default.QrCode)
-    object Recharge : Screen("recharge", "充值", Icons.Default.AccountBalanceWallet)
-    object Personal : Screen("personal", "我的", Icons.Default.Person)
-}
+private data class BottomBarDestination(
+    val route: String,
+    val label: String,
+    val icon: ImageVector,
+)
+
+private val bottomBarDestinations = listOf(
+    BottomBarDestination(MainDestinations.PAY, MainDestinations.LABEL_PAY, Icons.Default.QrCode),
+    BottomBarDestination(MainDestinations.SCHEDULE, MainDestinations.LABEL_SCHEDULE, Icons.Default.DateRange),
+    BottomBarDestination(MainDestinations.ME, MainDestinations.LABEL_ME, Icons.Default.Person),
+)
 
 @Composable
 fun MainAppScreen(
@@ -34,50 +49,51 @@ fun MainAppScreen(
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
-    var selectedScreen by remember { mutableStateOf<Screen>(Screen.ECode) }
-    
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val showBottomBar = currentRoute == null || MainDestinations.isBottomBar(currentRoute)
+
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                val screens = listOf(Screen.ECode, Screen.Recharge, Screen.Personal)
-                
-                screens.forEach { screen ->
-                    NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.title) },
-                        label = { Text(screen.title) },
-                        selected = selectedScreen == screen,
-                        onClick = {
-                            selectedScreen = screen
-                            navController.navigate(screen.route) {
-                                // Pop up to the start destination
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
+            if (showBottomBar) {
+                NavigationBar {
+                    bottomBarDestinations.forEach { destination ->
+                        NavigationBarItem(
+                            icon = { Icon(destination.icon, contentDescription = destination.label) },
+                            label = { Text(destination.label) },
+                            selected = currentRoute == destination.route,
+                            onClick = {
+                                navController.navigate(destination.route) {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                // Avoid multiple copies
-                                launchSingleTop = true
-                                // Restore state
-                                restoreState = true
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = Screen.ECode.route,
+            startDestination = MainDestinations.PAY,
             modifier = Modifier.padding(paddingValues)
         ) {
-            composable(Screen.ECode.route) {
-                ECodeScreen()
+            composable(MainDestinations.PAY) {
+                PayCodeScreen(
+                    onOpenPayCode = { navController.navigate(MainDestinations.openPayCodeRoute) },
+                    onOpenRecharge = { navController.navigate(MainDestinations.RECHARGE) },
+                )
             }
 
-            composable(Screen.Recharge.route) {
-                RechargeScreen()
+            composable(MainDestinations.SCHEDULE) {
+                JwxtScheduleScreen()
             }
-            
-            composable(Screen.Personal.route) {
+
+            composable(MainDestinations.ME) {
                 PersonalScreen(
                     sessionState = sessionState,
                     cookieJar = cookieJar,
@@ -85,6 +101,14 @@ fun MainAppScreen(
                     authRepository = authRepository,
                     onLogout = onLogout
                 )
+            }
+
+            composable(MainDestinations.RECHARGE) {
+                RechargeScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(MainDestinations.ECODE_WEBVIEW) {
+                ECodeWebViewScreen(onBack = { navController.popBackStack() })
             }
         }
     }
