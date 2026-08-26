@@ -22,6 +22,7 @@ import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.local.datastore.UserPreferences
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
+import com.neko.neuecode.ui.screen.intranet.IntranetVpnScreen
 import com.neko.neuecode.ui.screen.paycode.ECodeWebViewScreen
 import com.neko.neuecode.ui.screen.paycode.PayCodeScreen
 import com.neko.neuecode.ui.screen.personal.PersonalScreen
@@ -90,7 +91,9 @@ fun MainAppScreen(
             }
 
             composable(MainDestinations.SCHEDULE) {
-                JwxtScheduleScreen()
+                JwxtScheduleScreen(
+                    onOpenIntranet = { navController.navigate(MainDestinations.INTRANET) },
+                )
             }
 
             composable(MainDestinations.ME) {
@@ -109,6 +112,10 @@ fun MainAppScreen(
 
             composable(MainDestinations.ECODE_WEBVIEW) {
                 ECodeWebViewScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(MainDestinations.INTRANET) {
+                IntranetVpnScreen(onBack = { navController.popBackStack() })
             }
         }
     }
