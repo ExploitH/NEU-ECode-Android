@@ -4,6 +4,9 @@ import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.remote.api.PersonalApi
+import com.neko.neuecode.data.remote.ecode.ECodePayCodeApi
+import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
+import com.neko.neuecode.data.remote.jwxt.JwxtScheduleClient
 import com.neko.neuecode.data.remote.model.AppLoginResponse
 import com.neko.neuecode.data.remote.model.AppLoginResponseDeserializer
 import com.neko.neuecode.data.remote.model.LoginCheckData
@@ -109,6 +112,24 @@ object NetworkModule {
     @Singleton
     fun providePersonalApi(retrofit: Retrofit): PersonalApi {
         return retrofit.create(PersonalApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideJwxtCasAuthenticator(okHttpClient: OkHttpClient): JwxtCasAuthenticator {
+        return JwxtCasAuthenticator(okHttpClient)
+    }
+
+    @Provides
+    @Singleton
+    fun provideJwxtScheduleClient(okHttpClient: OkHttpClient): JwxtScheduleClient {
+        return JwxtScheduleClient(okHttpClient)
+    }
+
+    @Provides
+    @Singleton
+    fun provideECodePayCodeApi(okHttpClient: OkHttpClient): ECodePayCodeApi {
+        return ECodePayCodeApi(okHttpClient)
     }
 
     private fun sanitizeHeaders(headers: Headers): String {

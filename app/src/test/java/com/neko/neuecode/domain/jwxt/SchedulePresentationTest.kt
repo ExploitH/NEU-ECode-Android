@@ -9,7 +9,7 @@ import org.junit.Test
 class SchedulePresentationTest {
 
     private val document: JwxtScheduleDocument = JwxtScheduleNormalizer.normalize(
-        account = "20241475",
+        account = "20240001",
         termCode = "2026-2027-1",
         termName = "2026-2027学年秋季学期",
         campusCode = "01",
