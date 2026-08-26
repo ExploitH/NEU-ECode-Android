@@ -11,11 +11,10 @@ import javax.inject.Singleton
 
 @Singleton
 class JwxtScheduleCacheStore @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext context: Context,
 ) {
     private val gson = Gson()
-    private val file: File
-        get() = File(context.filesDir, "jwxt_schedule_cache.json")
+    private val file: File = File(context.filesDir, "jwxt_schedule_cache.json")
 
     fun load(): JwxtScheduleDocument? {
         return try {

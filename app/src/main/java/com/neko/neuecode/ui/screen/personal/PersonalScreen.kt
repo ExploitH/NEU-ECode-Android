@@ -26,11 +26,11 @@ fun PersonalScreen(
     cookieJar: PersistentCookieJar,
     userPreferences: UserPreferences,
     authRepository: AuthRepository,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onOpenIntranet: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var cookieCount by remember { mutableStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showAgreementDialog by remember { mutableStateOf(false) }
@@ -38,19 +38,8 @@ fun PersonalScreen(
     var cacheCleanMessage by remember { mutableStateOf<String?>(null) }
     var isClearingCache by remember { mutableStateOf(false) }
 
-    suspend fun refreshCookieCount() {
-        val urls = listOf(
-            "https://ecode.neu.edu.cn/",
-            "https://personal.neu.edu.cn/",
-            "https://pass.neu.edu.cn/"
-        )
-        cookieCount = urls.sumOf { url ->
-            cookieJar.getCookiesForUrl(url).size
-        }
-    }
-    
     LaunchedEffect(Unit) {
-        refreshCookieCount()
+        cookieJar.restoreFromStorage()
     }
     
     Column(
@@ -108,12 +97,6 @@ fun PersonalScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 StatusItem(
-                    icon = Icons.Default.Cookie,
-                    label = "Cookie 数量",
-                    value = "$cookieCount 个"
-                )
-                
-                StatusItem(
                     icon = Icons.Default.AccessTime,
                     label = "上次刷新",
                     value = formatTimestamp(sessionState.lastRefresh)
@@ -134,14 +117,20 @@ fun PersonalScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "设置",
+                    text = "功能",
                     style = MaterialTheme.typography.titleMedium
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                
+
+                SettingItem(
+                    icon = Icons.Default.VpnLock,
+                    label = "内网连接",
+                    onClick = onOpenIntranet
+                )
+
                 SettingItem(
                     icon = Icons.Default.Info,
-                    label = "关于",
+                    label = "关于 / 用户协议",
                     onClick = { showAboutDialog = true }
                 )
                 
@@ -246,7 +235,6 @@ fun PersonalScreen(
                             isClearingCache = true
                             cacheCleanMessage = null
                             val result = CacheCleaner.clearNonSessionCache(context)
-                            refreshCookieCount()
                             cacheCleanMessage = "已清理 ${formatBytes(result.bytesDeleted)} / ${result.filesDeleted} 个文件，登录态已保留"
                             isClearingCache = false
                         }

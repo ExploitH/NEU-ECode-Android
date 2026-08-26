@@ -7,14 +7,15 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
-import androidx.core.text.isDigitsOnly
+import com.neko.neuecode.MainActivity
+import com.neko.neuecode.R
+import com.neko.neuecode.domain.ecode.PayCodeParseResult
+import com.neko.neuecode.domain.model.Result
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import com.neko.neuecode.R
-import com.neko.neuecode.domain.model.Result
 import timber.log.Timber
 
 class ECodeWidgetProvider : AppWidgetProvider() {
@@ -37,7 +38,19 @@ class ECodeWidgetProvider : AppWidgetProvider() {
                 context,
                 1001,
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        private fun pendingOpenAppIntent(context: Context): PendingIntent {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            return PendingIntent.getActivity(
+                context,
+                1002,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         }
 
@@ -50,28 +63,24 @@ class ECodeWidgetProvider : AppWidgetProvider() {
         private fun render(context: Context, widgetIds: IntArray, loading: Boolean = false) {
             val manager = AppWidgetManager.getInstance(context)
             val snapshot = ECodeWidgetStore.load(context)
-            val qrBitmap = ECodeWidgetStore.loadQrBitmap(context)
+            val openApp = snapshot.status.contains("打开 App")
             widgetIds.forEach { appWidgetId ->
                 val views = RemoteViews(context.packageName, R.layout.ecode_widget)
                 views.setTextViewText(R.id.widget_title, "NEU e码通")
                 views.setTextViewText(R.id.widget_status, if (loading) "刷新中…" else snapshot.status)
                 views.setTextViewText(
                     R.id.widget_card_balance,
-                    if (snapshot.cardBalance.isNotBlank()) "校园卡：${snapshot.cardBalance}" else "校园卡：--"
+                    if (snapshot.cardBalance.isNotBlank()) "校园卡：${snapshot.cardBalance}" else "校园卡：--",
                 )
                 views.setTextViewText(
                     R.id.widget_network_balance,
-                    if (snapshot.networkBalance.isNotBlank()) "网费：${snapshot.networkBalance}" else "网费：--"
+                    if (snapshot.networkBalance.isNotBlank()) "网费：${snapshot.networkBalance}" else "网费：--",
                 )
                 views.setTextViewText(R.id.widget_updated_at, formatTimestamp(snapshot.updatedAt))
-                if (qrBitmap != null) {
-                    views.setImageViewBitmap(R.id.widget_qr, qrBitmap)
-                } else {
-                    views.setImageViewResource(R.id.widget_qr, R.drawable.ic_launcher)
-                }
-                val refreshIntent = pendingRefreshIntent(context)
-                views.setOnClickPendingIntent(R.id.widget_root, refreshIntent)
-                views.setOnClickPendingIntent(R.id.widget_refresh, refreshIntent)
+                views.setImageViewResource(R.id.widget_qr, R.drawable.ic_launcher)
+                val rootIntent = if (openApp) pendingOpenAppIntent(context) else pendingRefreshIntent(context)
+                views.setOnClickPendingIntent(R.id.widget_root, rootIntent)
+                views.setOnClickPendingIntent(R.id.widget_refresh, pendingRefreshIntent(context))
                 manager.updateAppWidget(appWidgetId, views)
             }
         }
@@ -96,10 +105,10 @@ class ECodeWidgetProvider : AppWidgetProvider() {
                 try {
                     val entryPoint = EntryPointAccessors.fromApplication(
                         appContext,
-                        ECodeWidgetEntryPoint::class.java
+                        ECodeWidgetEntryPoint::class.java,
                     )
                     val balanceRepo = entryPoint.personalRepository()
-                    val qrRepo = entryPoint.eCodeQrRepository()
+                    val payCodeRepo = entryPoint.eCodePayCodeRepository()
 
                     var status = "刷新完成"
                     var card = ECodeWidgetStore.load(appContext).cardBalance
@@ -118,18 +127,22 @@ class ECodeWidgetProvider : AppWidgetProvider() {
                         else -> Unit
                     }
 
-                    val qrBitmap = qrRepo.fetchQrBitmap()
-                    if (qrBitmap != null) {
-                        ECodeWidgetStore.saveQrBitmap(appContext, qrBitmap)
-                    } else if (status == "刷新完成") {
-                        status = "二维码刷新失败"
+                    when (payCodeRepo.fetchPayCode()) {
+                        is PayCodeParseResult.Success -> {
+                            if (status == "刷新完成") {
+                                status = "小组件可用 · 打开 App 出示付款码"
+                            }
+                        }
+                        is PayCodeParseResult.Failure -> {
+                            status = "打开 App 出示付款码"
+                        }
                     }
 
                     ECodeWidgetStore.saveBalances(appContext, card, network, updatedAt, status)
                     render(appContext, widgetIds, loading = false)
                 } catch (e: Exception) {
                     Timber.e(e, "Widget refresh failed")
-                    ECodeWidgetStore.saveStatus(appContext, "刷新失败: ${e.message ?: "未知错误"}")
+                    ECodeWidgetStore.saveStatus(appContext, "打开 App 出示付款码")
                     render(appContext, widgetIds, loading = false)
                 } finally {
                     pendingResult?.finish()

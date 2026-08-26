@@ -102,7 +102,8 @@ fun MainAppScreen(
                     cookieJar = cookieJar,
                     userPreferences = userPreferences,
                     authRepository = authRepository,
-                    onLogout = onLogout
+                    onLogout = onLogout,
+                    onOpenIntranet = { navController.navigate(MainDestinations.INTRANET) },
                 )
             }
 
