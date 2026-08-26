@@ -8,23 +8,32 @@ import org.json.JSONException
 import org.json.JSONObject
 
 /**
- * Replaceable fixture parser for eCode pay-code envelopes.
+ * Parser for eCode pay-code bodies.
  *
- * Provisional JSON field names (Task 3 may retarget these without changing
- * [PayCode] / [PayCodeFailure]):
- * - envelope: `e` (success when `"0"`), `m` (message), `d` (data object or JSON string)
- * - inner object: `payload`, `ttlSeconds`, `expiresAtEpochMs`
+ * Accepts both:
+ * - Task 2 fixture envelope: `e` / `m` / `d.{payload,ttlSeconds,expiresAtEpochMs}`
+ * - Live JSON:API: `data[0].attributes.{qrCode,qrInvalidTime}` (epoch-ms string)
  *
- * This parser does **not** decrypt RSA. If `d` is a JSON object string it is
+ * HTTP-layer failures belong to the repository. This parser only sees body text.
+ * It does **not** decrypt RSA. If fixture `d` is a JSON object string it is
  * parsed; opaque ciphertext is [PayCodeFailure.ProtocolError].
  */
 object ECodePayCodeParser {
 
     fun parse(json: String, nowEpochMs: Long = System.currentTimeMillis()): PayCodeParseResult {
+        val trimmed = json.trim()
+        if (looksLikeHtml(trimmed)) {
+            return PayCodeParseResult.Failure(PayCodeFailure.NeedRelogin, "HTML login page")
+        }
+
         val root = try {
             JSONObject(json)
         } catch (_: JSONException) {
             return PayCodeParseResult.Failure(PayCodeFailure.Unknown, "unparseable JSON")
+        }
+
+        if (root.has("data") && root.optJSONArray("data") != null) {
+            return parseJsonApi(root, nowEpochMs)
         }
 
         val envelopeCode = envelopeCode(root)
@@ -75,6 +84,56 @@ object ECodePayCodeParser {
                 ttlSeconds = ttlSeconds,
             ),
         )
+    }
+
+    private fun parseJsonApi(root: JSONObject, nowEpochMs: Long): PayCodeParseResult {
+        val data = root.optJSONArray("data")
+            ?: return PayCodeParseResult.Failure(PayCodeFailure.ProtocolError, "JSON:API data is not an array")
+        if (data.length() == 0) {
+            return PayCodeParseResult.Failure(PayCodeFailure.ProtocolError, "JSON:API data is empty")
+        }
+        val first = data.optJSONObject(0)
+            ?: return PayCodeParseResult.Failure(PayCodeFailure.ProtocolError, "JSON:API data[0] missing")
+        val attributes = first.optJSONObject("attributes")
+            ?: return PayCodeParseResult.Failure(PayCodeFailure.ProtocolError, "JSON:API attributes missing")
+
+        val qrCode = attributes.optString("qrCode", "").trim()
+        if (qrCode.isEmpty()) {
+            return PayCodeParseResult.Failure(PayCodeFailure.ProtocolError, "blank qrCode")
+        }
+
+        val expiresAtEpochMs = parseEpochMs(attributes, "qrInvalidTime")
+            ?: return PayCodeParseResult.Failure(PayCodeFailure.ProtocolError, "invalid qrInvalidTime")
+        val ttlSeconds = ((expiresAtEpochMs - nowEpochMs) / 1000L).toInt().coerceAtLeast(0)
+
+        if (expiresAtEpochMs <= nowEpochMs) {
+            return PayCodeParseResult.Failure(PayCodeFailure.Expired)
+        }
+
+        return PayCodeParseResult.Success(
+            PayCode(
+                payload = qrCode,
+                expiresAtEpochMs = expiresAtEpochMs,
+                ttlSeconds = ttlSeconds,
+            ),
+        )
+    }
+
+    private fun parseEpochMs(attributes: JSONObject, key: String): Long? {
+        if (!attributes.has(key) || attributes.isNull(key)) return null
+        val raw = attributes.opt(key) ?: return null
+        return when (raw) {
+            is Number -> raw.toLong()
+            else -> raw.toString().trim().toLongOrNull()
+        }
+    }
+
+    private fun looksLikeHtml(body: String): Boolean {
+        if (body.isEmpty()) return false
+        val lowered = body.lowercase()
+        return body.startsWith("<") ||
+            lowered.startsWith("<!doctype") ||
+            lowered.contains("<html")
     }
 
     private fun envelopeCode(root: JSONObject): String {

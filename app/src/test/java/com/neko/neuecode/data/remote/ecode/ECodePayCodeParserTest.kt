@@ -181,4 +181,57 @@ class ECodePayCodeParserTest {
         assertEquals(PayCodeFailure.ProtocolError, failure.reason)
         assertTrue(failure.message.orEmpty().contains("decrypt", ignoreCase = true))
     }
+
+    @Test
+    fun parse_jsonApiSuccessExtractsQrCodeAndQrInvalidTime() {
+        val json = """
+            {"data":[{"type":null,"attributes":{"qrCode":"NEU-PAY-FIXTURE-001","createTime":"1710000000000","qrInvalidTime":"1710000090000"}}]}
+        """.trimIndent()
+
+        val result = ECodePayCodeParser.parse(json, nowEpochMs)
+
+        val success = result as PayCodeParseResult.Success
+        assertEquals("NEU-PAY-FIXTURE-001", success.code.payload)
+        assertEquals(1_710_000_090_000L, success.code.expiresAtEpochMs)
+        assertEquals(90, success.code.ttlSeconds)
+    }
+
+    @Test
+    fun parse_jsonApiExpiredQrInvalidTime_returnsExpired() {
+        val json = """
+            {"data":[{"type":null,"attributes":{"qrCode":"NEU-PAY-FIXTURE-001","createTime":"1709999910000","qrInvalidTime":"1710000000000"}}]}
+        """.trimIndent()
+
+        val result = ECodePayCodeParser.parse(json, nowEpochMs)
+
+        val failure = result as PayCodeParseResult.Failure
+        assertEquals(PayCodeFailure.Expired, failure.reason)
+    }
+
+    @Test
+    fun parse_jsonApiBlankQrCode_returnsProtocolError() {
+        val json = """
+            {"data":[{"type":null,"attributes":{"qrCode":"   ","createTime":"1710000000000","qrInvalidTime":"1710000090000"}}]}
+        """.trimIndent()
+
+        val result = ECodePayCodeParser.parse(json, nowEpochMs)
+
+        val failure = result as PayCodeParseResult.Failure
+        assertEquals(PayCodeFailure.ProtocolError, failure.reason)
+    }
+
+    @Test
+    fun parse_htmlLoginPage_returnsUnauthenticatedOrNeedRelogin() {
+        val html = """
+            <!DOCTYPE html><html><head><title>登录</title></head><body>请先登录</body></html>
+        """.trimIndent()
+
+        val result = ECodePayCodeParser.parse(html, nowEpochMs)
+
+        val failure = result as PayCodeParseResult.Failure
+        assertTrue(
+            failure.reason == PayCodeFailure.NeedRelogin ||
+                failure.reason == PayCodeFailure.Unauthenticated,
+        )
+    }
 }
