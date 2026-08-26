@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.remote.api.PersonalApi
+import com.neko.neuecode.data.remote.enrollment.SerializedEnrollmentTransport
 import com.neko.neuecode.data.remote.model.AppLoginResponse
 import com.neko.neuecode.data.remote.model.AppLoginResponseDeserializer
 import com.neko.neuecode.data.remote.model.LoginCheckData
@@ -30,6 +31,7 @@ object NetworkModule {
     private val SENSITIVE_HEADER_NAMES = setOf(
         "authorization-str",
         "authorization",
+        "batchid",
         "cookie",
         "set-cookie"
     )
@@ -45,6 +47,10 @@ object NetworkModule {
             // Keep logs useful for debugging while avoiding encrypted bodies,
             // tickets, cookies, credentials and personal data in local files/logcat.
             level = HttpLoggingInterceptor.Level.HEADERS
+            redactHeader("Authorization")
+            redactHeader("batchId")
+            redactHeader("Cookie")
+            redactHeader("Set-Cookie")
         }
 
         val metadataInterceptor = okhttp3.Interceptor { chain ->
@@ -111,6 +117,12 @@ object NetworkModule {
         return retrofit.create(PersonalApi::class.java)
     }
 
+    @Provides
+    @Singleton
+    fun provideEnrollmentTransport(okHttpClient: OkHttpClient): SerializedEnrollmentTransport {
+        return SerializedEnrollmentTransport(okHttpClient)
+    }
+
     private fun sanitizeHeaders(headers: Headers): String {
         return headers.names().joinToString(prefix = "[", postfix = "]") { name ->
             if (SENSITIVE_HEADER_NAMES.contains(name.lowercase())) {
@@ -124,6 +136,8 @@ object NetworkModule {
     private fun sanitizeNetworkLog(message: String): String {
         return message
             .replace(Regex("(?i)(authorization-str: )\\S+"), "$1<redacted>")
+            .replace(Regex("(?i)(authorization: )\\S+"), "$1<redacted>")
+            .replace(Regex("(?i)(batchId: )\\S+"), "$1<redacted>")
             .replace(Regex("(?i)(Cookie: ).*"), "$1<redacted>")
             .replace(Regex("(?i)(Set-Cookie: ).*"), "$1<redacted>")
             .replace(Regex("(?i)(content=)[^&\\s]+"), "$1<redacted>")

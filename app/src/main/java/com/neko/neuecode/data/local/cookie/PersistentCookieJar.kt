@@ -28,8 +28,9 @@ class PersistentCookieJar @Inject constructor(
     private val cookieSerializer: CookieSerializer
 ) : CookieJar {
     
-    // In-memory cookie store for fast access
-    private val cookieStore = ConcurrentHashMap<String, MutableSet<SerializableCookie>>()
+    // Identity is RFC-style name + domain + path. MutableList lets us replace
+    // a rotating cookie synchronously before the next request is allowed to run.
+    private val cookieStore = ConcurrentHashMap<String, MutableList<SerializableCookie>>()
     
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
@@ -45,8 +46,7 @@ class PersistentCookieJar @Inject constructor(
     
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         if (cookies.isEmpty()) return
-        
-        val domain = url.host
+
         val serializedCookies = cookies.mapNotNull { cookie ->
             try {
                 SerializableCookie.fromOkHttpCookie(cookie)
@@ -55,30 +55,29 @@ class PersistentCookieJar @Inject constructor(
                 null
             }
         }
-        
         if (serializedCookies.isEmpty()) return
-        
-        // Save to in-memory store
-        val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
-        synchronized(domainCookies) {
-            // Remove old cookies with same name
-            serializedCookies.forEach { newCookie ->
-                domainCookies.removeIf { it.name == newCookie.name }
+
+        serializedCookies.groupBy { normalizeDomain(it.domain) }.forEach { (domain, newCookies) ->
+            val domainCookies = cookieStore.getOrPut(domain) { mutableListOf() }
+            synchronized(domainCookies) {
+                newCookies.forEach { newCookie ->
+                    // Set-Cookie is authoritative. Replace the exact RFC identity,
+                    // and remove metadata-less WebView placeholders for the name.
+                    domainCookies.removeAll { stored ->
+                        stored.hasSameIdentity(newCookie) ||
+                            (stored.fromWebViewSnapshot &&
+                                stored.name == newCookie.name &&
+                                normalizeDomain(stored.domain) == normalizeDomain(newCookie.domain))
+                    }
+                    if (!newCookie.isExpired()) domainCookies.add(newCookie)
+                }
+                domainCookies.removeAll { it.isExpired() }
             }
-            domainCookies.addAll(serializedCookies)
-            // Remove expired cookies
-            domainCookies.removeIf { it.isExpired() }
         }
-        
-        Timber.d("Saved ${serializedCookies.size} cookies for domain: $domain")
-        
-        // Sync to WebView (must be on main thread)
+
+        Timber.d("Saved ${serializedCookies.size} cookies for response host: ${url.host}")
         syncToWebView(url.toString(), serializedCookies)
-        
-        // Persist to storage asynchronously
-        scope.launch {
-            persistToStorage()
-        }
+        scope.launch { persistToStorage() }
     }
     
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
@@ -101,10 +100,12 @@ class PersistentCookieJar @Inject constructor(
         if (matchingCookies.isNotEmpty()) {
             Timber.d("Loaded ${matchingCookies.size} cookies for request: ${url.host}")
         }
-        
-        return matchingCookies
+
+        return matchingCookies.sortedWith(
+            compareByDescending<Cookie> { it.path.length }.thenBy { it.name }
+        )
     }
-    
+
     /**
      * Restore cookies from persistent storage.
      * Should be called during app initialization.
@@ -115,9 +116,10 @@ class PersistentCookieJar @Inject constructor(
         try {
             val savedCookies = cookieSerializer.loadCookies()
             
-            // Group by domain
-            savedCookies.groupBy { it.domain }.forEach { (domain, cookies) ->
-                val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
+            // Group by normalized domain so .example.edu.cn and example.edu.cn
+            // share one storage bucket while retaining each cookie's identity.
+            savedCookies.groupBy { normalizeDomain(it.domain) }.forEach { (domain, cookies) ->
+                val domainCookies = cookieStore.getOrPut(domain) { mutableListOf() }
                 synchronized(domainCookies) {
                     domainCookies.clear()
                     domainCookies.addAll(cookies)
@@ -259,9 +261,9 @@ class PersistentCookieJar @Inject constructor(
             persistent = false
         )
 
-        val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
+        val domainCookies = cookieStore.getOrPut(normalizeDomain(domain)) { mutableListOf() }
         synchronized(domainCookies) {
-            domainCookies.removeIf { it.name == cookie.name }
+            domainCookies.removeAll { it.hasSameIdentity(cookie) }
             domainCookies.add(cookie)
         }
 
@@ -297,7 +299,11 @@ class PersistentCookieJar @Inject constructor(
                 .forEach { pair ->
                     val name = pair.substringBefore('=').trim()
                     val value = pair.substringAfter('=').trim()
-                    if (name.isNotBlank() && value.isNotBlank() && !value.equals("deleted", ignoreCase = true)) {
+                    if (name.isNotBlank() &&
+                        name.lowercase() !in WEBVIEW_SESSION_HEADER_NAMES &&
+                        value.isNotBlank() &&
+                        !value.equals("deleted", ignoreCase = true)
+                    ) {
                         imported.add(
                             SerializableCookie(
                                 name = name,
@@ -308,7 +314,8 @@ class PersistentCookieJar @Inject constructor(
                                 secure = url.startsWith("https://", ignoreCase = true),
                                 httpOnly = false,
                                 hostOnly = true,
-                                persistent = false
+                                persistent = false,
+                                fromWebViewSnapshot = true
                             )
                         )
                     }
@@ -317,13 +324,24 @@ class PersistentCookieJar @Inject constructor(
 
         if (imported.isEmpty()) return 0
 
-        imported.groupBy { it.domain }.forEach { (domain, cookies) ->
-            val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
+        imported.groupBy { normalizeDomain(it.domain) }.forEach { (domain, cookies) ->
+            val domainCookies = cookieStore.getOrPut(domain) { mutableListOf() }
             synchronized(domainCookies) {
-                cookies.forEach { newCookie ->
-                    domainCookies.removeIf { it.name == newCookie.name }
+                cookies.forEach { snapshot ->
+                    val existing = domainCookies.filter { stored ->
+                        stored.name == snapshot.name &&
+                            normalizeDomain(stored.domain) == normalizeDomain(snapshot.domain)
+                    }
+                    if (existing.isEmpty()) {
+                        domainCookies.add(snapshot)
+                    } else {
+                        existing.forEach { stored ->
+                            domainCookies.remove(stored)
+                            domainCookies.add(stored.copy(value = snapshot.value))
+                        }
+                    }
                 }
-                domainCookies.addAll(cookies)
+                domainCookies.removeAll { it.isExpired() }
             }
         }
 
@@ -349,5 +367,11 @@ class PersistentCookieJar @Inject constructor(
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun normalizeDomain(domain: String): String = domain.trimStart('.').lowercase()
+
+    companion object {
+        private val WEBVIEW_SESSION_HEADER_NAMES = setOf("authorization", "token")
     }
 }

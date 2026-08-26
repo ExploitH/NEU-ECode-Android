@@ -38,6 +38,13 @@
             android:configChanges="orientation|screenSize|keyboardHidden" />
 
         <activity
+            android:name=".ui.enrollment.EnrollmentPortalActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:hardwareAccelerated="true"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <activity
             android:name=".ui.update.UpdateVerificationActivity"
             android:exported="false"
             android:theme="@style/AppTheme"

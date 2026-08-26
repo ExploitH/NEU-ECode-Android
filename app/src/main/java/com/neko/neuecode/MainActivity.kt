@@ -35,6 +35,7 @@ import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.local.datastore.UserPreferences
 import com.neko.neuecode.data.remote.update.AppUpdateRepository
 import com.neko.neuecode.data.remote.update.AppVersionInfo
+import com.neko.neuecode.data.remote.enrollment.EnrollmentSessionStore
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
 import com.neko.neuecode.ui.screen.login.NativeLoginScreen
@@ -68,6 +69,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appUpdateInstaller: AppUpdateInstaller
 
+    @Inject
+    lateinit var enrollmentSessionStore: EnrollmentSessionStore
+
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -84,7 +88,8 @@ class MainActivity : ComponentActivity() {
                         authRepository = authRepository,
                         userPreferences = userPreferences,
                         appUpdateRepository = appUpdateRepository,
-                        appUpdateInstaller = appUpdateInstaller
+                        appUpdateInstaller = appUpdateInstaller,
+                        enrollmentSessionStore = enrollmentSessionStore
                     )
                 }
             }
@@ -98,7 +103,8 @@ fun MainNavigation(
     authRepository: AuthRepository,
     userPreferences: UserPreferences,
     appUpdateRepository: AppUpdateRepository,
-    appUpdateInstaller: AppUpdateInstaller
+    appUpdateInstaller: AppUpdateInstaller,
+    enrollmentSessionStore: EnrollmentSessionStore
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -207,6 +213,7 @@ fun MainNavigation(
                     authRepository = authRepository,
                     onLogout = {
                         scope.launch {
+                            enrollmentSessionStore.clear()
                             authRepository.logout()
                             sessionState = SessionState.Idle
                             showLogin = true

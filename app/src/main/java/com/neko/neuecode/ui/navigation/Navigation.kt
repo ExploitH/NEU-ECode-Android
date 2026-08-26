@@ -16,11 +16,13 @@ import com.neko.neuecode.data.local.datastore.UserPreferences
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
 import com.neko.neuecode.ui.screen.ecode.ECodeScreen
+import com.neko.neuecode.ui.screen.enrollment.EnrollmentScreen
 import com.neko.neuecode.ui.screen.personal.PersonalScreen
 import com.neko.neuecode.ui.screen.recharge.RechargeScreen
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object ECode : Screen("ecode", "e码通", Icons.Default.QrCode)
+    object Enrollment : Screen("enrollment", "选课", Icons.Default.School)
     object Recharge : Screen("recharge", "充值", Icons.Default.AccountBalanceWallet)
     object Personal : Screen("personal", "我的", Icons.Default.Person)
 }
@@ -39,7 +41,7 @@ fun MainAppScreen(
     Scaffold(
         bottomBar = {
             NavigationBar {
-                val screens = listOf(Screen.ECode, Screen.Recharge, Screen.Personal)
+                val screens = listOf(Screen.ECode, Screen.Enrollment, Screen.Recharge, Screen.Personal)
                 
                 screens.forEach { screen ->
                     NavigationBarItem(
@@ -75,6 +77,10 @@ fun MainAppScreen(
 
             composable(Screen.Recharge.route) {
                 RechargeScreen()
+            }
+
+            composable(Screen.Enrollment.route) {
+                EnrollmentScreen()
             }
             
             composable(Screen.Personal.route) {

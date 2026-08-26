@@ -2,6 +2,7 @@ package com.neko.neuecode.data.local.cookie
 
 import kotlinx.serialization.Serializable
 import okhttp3.Cookie
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.net.HttpCookie
 
 /**
@@ -18,7 +19,8 @@ data class SerializableCookie(
     val secure: Boolean = false,
     val httpOnly: Boolean = false,
     val hostOnly: Boolean = false,
-    val persistent: Boolean = false
+    val persistent: Boolean = false,
+    val fromWebViewSnapshot: Boolean = false
 ) {
     
     companion object {
@@ -48,7 +50,12 @@ data class SerializableCookie(
                         System.currentTimeMillis() + (httpCookie.maxAge * 1000L)
                     } else 0L,
                     secure = httpCookie.secure,
-                    httpOnly = httpCookie.isHttpOnly,
+                    // HttpCookie.isHttpOnly requires API 24. Parsing the attribute
+                    // directly keeps this model safe on the app's minSdk 23.
+                    httpOnly = setCookieValue
+                        .split(';')
+                        .drop(1)
+                        .any { it.trim().equals("HttpOnly", ignoreCase = true) },
                     hostOnly = httpCookie.domain == null,
                     persistent = httpCookie.maxAge > 0
                 )
@@ -95,17 +102,13 @@ data class SerializableCookie(
     }
     
     fun matches(url: String): Boolean {
-        val urlDomain = extractDomain(url)
-        val urlPath = url.substringAfter(urlDomain).takeIf { it.isNotEmpty() } ?: "/"
-        
-        val domainMatch = if (hostOnly) {
-            urlDomain == domain
-        } else {
-            urlDomain == domain || urlDomain.endsWith(".$domain")
-        }
-        
-        val pathMatch = urlPath.startsWith(path)
-        
-        return domainMatch && pathMatch && !isExpired()
+        if (isExpired()) return false
+        val httpUrl = url.toHttpUrlOrNull() ?: return false
+        return toOkHttpCookie()?.matches(httpUrl) == true
     }
+
+    fun hasSameIdentity(other: SerializableCookie): Boolean =
+        name == other.name &&
+            domain.trimStart('.').equals(other.domain.trimStart('.'), ignoreCase = true) &&
+            path == other.path
 }
