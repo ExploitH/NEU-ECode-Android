@@ -28,4 +28,34 @@ object ScheduleWeekClock {
         val iso = ((thursdayBased + 3L) % 7L) + 1L
         return iso.toInt()
     }
+
+    fun localEpochDay(
+        year: Int,
+        month: Int,
+        day: Int,
+    ): Long {
+        val utc = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        utc.clear()
+        utc.set(java.util.Calendar.YEAR, year)
+        utc.set(java.util.Calendar.MONTH, month - 1)
+        utc.set(java.util.Calendar.DAY_OF_MONTH, day)
+        return utc.timeInMillis / 86_400_000L
+    }
+
+    fun todayEpochDay(): Long {
+        val local = java.util.Calendar.getInstance()
+        return localEpochDay(
+            year = local.get(java.util.Calendar.YEAR),
+            month = local.get(java.util.Calendar.MONTH) + 1,
+            day = local.get(java.util.Calendar.DAY_OF_MONTH),
+        )
+    }
+
+    fun todayWeekday(): Int {
+        val local = java.util.Calendar.getInstance()
+        val dow = local.get(java.util.Calendar.DAY_OF_WEEK)
+        return if (dow == java.util.Calendar.SUNDAY) 7 else dow - 1
+    }
+
+    fun fromUtcMillis(millis: Long): Long = millis / 86_400_000L
 }

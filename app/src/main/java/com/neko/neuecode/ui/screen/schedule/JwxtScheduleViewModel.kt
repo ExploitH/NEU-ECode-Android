@@ -3,11 +3,15 @@ package com.neko.neuecode.ui.screen.schedule
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.neko.neuecode.data.local.schedule.JwxtScheduleCacheStore
+import com.neko.neuecode.data.local.schedule.ScheduleSettings
+import com.neko.neuecode.data.local.schedule.ScheduleSettingsStore
+import com.neko.neuecode.data.remote.campus.CampusIntranetProbe
 import com.neko.neuecode.data.repository.JwxtScheduleRepository
 import com.neko.neuecode.domain.jwxt.CourseDetail
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.SchedulePresentation
+import com.neko.neuecode.domain.jwxt.ScheduleTodayHighlight
 import com.neko.neuecode.domain.jwxt.ScheduleWeekClock
 import com.neko.neuecode.domain.model.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,7 +20,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Calendar
 import javax.inject.Inject
 
 enum class SchedulePane {
@@ -26,7 +29,7 @@ enum class SchedulePane {
 
 data class JwxtScheduleUiState(
     val loading: Boolean = false,
-    val message: String = "同步课表后可查看本周网格。需要校园网时请先去「我的 → 内网连接」。",
+    val message: String = "点右上角「同步」拉取课表。同步前会先 ping ipgw.neu.edu.cn；不通即停止。",
     val document: JwxtScheduleDocument? = null,
     val terms: List<JwxtNamedCode> = emptyList(),
     val selectedTermCode: String? = null,
@@ -34,6 +37,10 @@ data class JwxtScheduleUiState(
     val maxWeek: Int = 20,
     val pane: SchedulePane = SchedulePane.Week,
     val todayWeekday: Int = 1,
+    val actualWeek: Int? = null,
+    val markedWeekday: Int = 0,
+    val termStartEpochDay: Long? = null,
+    val showSettings: Boolean = false,
     val selectedDetail: CourseDetail? = null,
     val showIntranetHint: Boolean = false,
 )
@@ -42,46 +49,71 @@ data class JwxtScheduleUiState(
 class JwxtScheduleViewModel @Inject constructor(
     private val repository: JwxtScheduleRepository,
     private val cacheStore: JwxtScheduleCacheStore,
+    private val settingsStore: ScheduleSettingsStore,
+    private val intranetProbe: CampusIntranetProbe,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(JwxtScheduleUiState())
     val uiState: StateFlow<JwxtScheduleUiState> = _uiState
 
     init {
-        val todayEpochDay = todayEpochDay()
-        val weekday = ScheduleWeekClock.weekdayOf(todayEpochDay)
+        val settings = settingsStore.load()
+        val todayEpochDay = ScheduleWeekClock.todayEpochDay()
+        val weekday = ScheduleWeekClock.todayWeekday()
         val cached = cacheStore.load()
-        val week = inferWeek(cached, todayEpochDay)
+        val actualWeek = actualWeekOf(settings.termStartEpochDay, todayEpochDay)
+        val selectedTerm = settings.defaultTermCode ?: cached?.term?.code
+        val week = (actualWeek ?: 1).coerceAtLeast(1)
         _uiState.value = _uiState.value.copy(
             document = cached,
-            selectedTermCode = cached?.term?.code,
-            terms = cached?.term?.let { listOf(it) }.orEmpty(),
-            selectedWeek = week,
+            selectedTermCode = selectedTerm,
+            terms = listOfNotNull(cached?.term).distinctBy { it.code },
+            selectedWeek = week.coerceAtMost(maxWeekOf(cached)),
             maxWeek = maxWeekOf(cached),
             todayWeekday = weekday,
-            message = if (cached != null) {
-                "${cached.term.name} · ${cached.campus.name} · 本地缓存"
-            } else {
-                _uiState.value.message
+            actualWeek = actualWeek,
+            markedWeekday = ScheduleTodayHighlight.weekdayToMark(week, actualWeek, weekday),
+            termStartEpochDay = settings.termStartEpochDay,
+            message = when {
+                cached != null -> "${cached.term.name} · ${cached.campus.name} · 本地缓存（未自动同步）"
+                else -> _uiState.value.message
             },
         )
-        refresh()
     }
 
     fun refresh(termCode: String? = _uiState.value.selectedTermCode) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 loading = true,
-                message = "正在同步教务课表…",
+                message = "正在检测校园网（ping ipgw.neu.edu.cn）…",
                 showIntranetHint = false,
             )
+            val probe = withContext(Dispatchers.IO) { intranetProbe.probe() }
+            if (probe.shouldAbortScheduleSync) {
+                val pingFailed = probe.host.contains("ipgw")
+                val message = if (pingFailed) {
+                    "未接入校园网（无法 ping 通 ipgw.neu.edu.cn），已停止课表同步"
+                } else {
+                    "未接入校园网（无法连接教务系统），已停止课表同步"
+                }
+                _uiState.value = _uiState.value.copy(
+                    loading = false,
+                    message = message,
+                    showIntranetHint = true,
+                )
+                return@launch
+            }
+            _uiState.value = _uiState.value.copy(message = "正在同步教务课表…")
             val result = withContext(Dispatchers.IO) {
                 repository.loadMySchedule(termCode = termCode)
             }
             when (result) {
                 is Result.Success -> {
                     cacheStore.save(result.data)
-                    val week = inferWeek(result.data, todayEpochDay())
+                    val today = ScheduleWeekClock.todayEpochDay()
+                    val weekday = ScheduleWeekClock.todayWeekday()
+                    val actualWeek = actualWeekOf(_uiState.value.termStartEpochDay, today)
+                    val week = (actualWeek ?: _uiState.value.selectedWeek).coerceIn(1, maxWeekOf(result.data))
                     _uiState.value = _uiState.value.copy(
                         loading = false,
                         message = "${result.data.term.name} · ${result.data.campus.name} · ${result.data.summary.courseCount} 门课",
@@ -89,16 +121,18 @@ class JwxtScheduleViewModel @Inject constructor(
                         selectedTermCode = result.data.term.code,
                         selectedWeek = week,
                         maxWeek = maxWeekOf(result.data),
+                        todayWeekday = weekday,
+                        actualWeek = actualWeek,
+                        markedWeekday = ScheduleTodayHighlight.weekdayToMark(week, actualWeek, weekday),
                         showIntranetHint = false,
                     )
                     loadTerms(result.data.term)
                 }
                 is Result.Error -> {
-                    val needsCampus = looksLikeCampusFailure(result.message)
                     _uiState.value = _uiState.value.copy(
                         loading = false,
                         message = result.message ?: "课表同步失败",
-                        showIntranetHint = needsCampus,
+                        showIntranetHint = looksLikeCampusFailure(result.message),
                     )
                 }
                 Result.Loading -> _uiState.value = _uiState.value.copy(loading = true, message = "正在同步教务课表…")
@@ -114,7 +148,13 @@ class JwxtScheduleViewModel @Inject constructor(
 
     fun selectWeek(week: Int) {
         val max = _uiState.value.maxWeek.coerceAtLeast(1)
-        _uiState.value = _uiState.value.copy(selectedWeek = week.coerceIn(1, max))
+        val selected = week.coerceIn(1, max)
+        val marked = ScheduleTodayHighlight.weekdayToMark(
+            selectedWeek = selected,
+            actualWeek = _uiState.value.actualWeek,
+            todayWeekday = _uiState.value.todayWeekday,
+        )
+        _uiState.value = _uiState.value.copy(selectedWeek = selected, markedWeekday = marked)
     }
 
     fun shiftWeek(delta: Int) {
@@ -134,6 +174,36 @@ class JwxtScheduleViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(selectedDetail = null)
     }
 
+    fun openSettings() {
+        _uiState.value = _uiState.value.copy(showSettings = true)
+    }
+
+    fun dismissSettings() {
+        _uiState.value = _uiState.value.copy(showSettings = false)
+    }
+
+    fun saveSettings(defaultTermCode: String?, termStartEpochDay: Long?) {
+        val settings = ScheduleSettings(
+            defaultTermCode = defaultTermCode?.takeIf { it.isNotBlank() },
+            termStartEpochDay = termStartEpochDay,
+        )
+        settingsStore.save(settings)
+        val today = ScheduleWeekClock.todayEpochDay()
+        val weekday = ScheduleWeekClock.todayWeekday()
+        val actualWeek = actualWeekOf(termStartEpochDay, today)
+        val max = _uiState.value.maxWeek.coerceAtLeast(1)
+        val week = (actualWeek ?: _uiState.value.selectedWeek).coerceIn(1, max)
+        _uiState.value = _uiState.value.copy(
+            selectedTermCode = settings.defaultTermCode ?: _uiState.value.selectedTermCode,
+            termStartEpochDay = termStartEpochDay,
+            actualWeek = actualWeek,
+            selectedWeek = week,
+            todayWeekday = weekday,
+            markedWeekday = ScheduleTodayHighlight.weekdayToMark(week, actualWeek, weekday),
+            showSettings = false,
+        )
+    }
+
     private fun loadTerms(current: JwxtNamedCode) {
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -148,14 +218,9 @@ class JwxtScheduleViewModel @Inject constructor(
         }
     }
 
-    private fun inferWeek(document: JwxtScheduleDocument?, todayEpochDay: Long): Int {
-        val weeks = document?.events.orEmpty().flatMap { it.weeks }
-        if (weeks.isEmpty()) return 1
-        val min = weeks.min()
-        val max = weeks.max()
-        val guessed = ScheduleWeekClock.weekOf(termStartEpochDay = null, todayEpochDay = todayEpochDay)
-        val preferred = if (guessed in min..max) guessed else max
-        return preferred.coerceIn(min, max)
+    private fun actualWeekOf(termStartEpochDay: Long?, todayEpochDay: Long): Int? {
+        if (termStartEpochDay == null) return null
+        return ScheduleWeekClock.weekOf(termStartEpochDay, todayEpochDay)
     }
 
     private fun maxWeekOf(document: JwxtScheduleDocument?): Int {
@@ -168,17 +233,9 @@ class JwxtScheduleViewModel @Inject constructor(
         return text.contains("校园网") ||
             text.contains("内网") ||
             text.contains("超时") ||
+            text.contains("ping") ||
             text.contains("Unable to resolve", ignoreCase = true) ||
             text.contains("Failed to connect", ignoreCase = true) ||
             text.contains("jwxt", ignoreCase = true)
-    }
-
-    private fun todayEpochDay(): Long {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return calendar.timeInMillis / 86_400_000L
     }
 }

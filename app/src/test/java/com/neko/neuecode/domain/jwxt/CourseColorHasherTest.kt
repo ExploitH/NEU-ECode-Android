@@ -38,4 +38,12 @@ class ScheduleWeekClockTest {
         assertEquals(2, ScheduleWeekClock.weekOf(termStartEpochDay = 10_000L, todayEpochDay = 10_007L))
         assertEquals(1, ScheduleWeekClock.weekOf(termStartEpochDay = 10_000L, todayEpochDay = 9_999L))
     }
+
+    @Test
+    fun localEpochDay_matchesUtcMidnightDivision() {
+        val day = ScheduleWeekClock.localEpochDay(2026, 8, 24)
+        assertEquals(day, ScheduleWeekClock.fromUtcMillis(day * 86_400_000L))
+        assertEquals(1, ScheduleWeekClock.weekdayOf(ScheduleWeekClock.localEpochDay(2026, 8, 24)))
+        assertEquals(4, ScheduleWeekClock.weekdayOf(ScheduleWeekClock.localEpochDay(2026, 8, 27)))
+    }
 }

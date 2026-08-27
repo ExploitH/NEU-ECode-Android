@@ -31,12 +31,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -44,6 +48,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,15 +78,18 @@ fun JwxtScheduleScreen(
         topBar = {
             TopAppBar(
                 title = {
+                    TextButton(onClick = { viewModel.openSettings() }) {
+                        Text("课表设定")
+                    }
+                },
+                windowInsets = WindowInsets.statusBars,
+                actions = {
                     TermPicker(
                         terms = state.terms,
                         selectedCode = state.selectedTermCode ?: document?.term?.code,
                         fallbackName = document?.term?.name ?: "课表",
                         onSelect = { viewModel.selectTerm(it) },
                     )
-                },
-                windowInsets = WindowInsets.statusBars,
-                actions = {
                     TextButton(
                         onClick = { viewModel.refresh() },
                         enabled = !state.loading,
@@ -143,18 +151,32 @@ fun JwxtScheduleScreen(
                         WeekGridPane(
                             document = document,
                             week = state.selectedWeek,
-                            todayWeekday = state.todayWeekday,
+                            todayWeekday = state.markedWeekday,
                             onCellClick = { viewModel.openEvent(it.eventId) },
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    SchedulePane.Today -> TodayPane(
+                    SchedulePane.Today -> {
+                        val todayWeek = com.neko.neuecode.domain.jwxt.ScheduleTodayHighlight.todayPaneWeek(
+                            actualWeek = state.actualWeek,
+                            selectedWeek = state.selectedWeek,
+                        )
+                        if (todayWeek == null) {
+                            Text(
+                                text = "请先在「课表设定」填写学期开始日期，才能确定今天是第几周。",
+                                color = colors.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        } else {
+                    TodayPane(
                         document = document,
                         weekday = state.todayWeekday,
-                        week = state.selectedWeek,
+                        week = todayWeek,
                         onItemClick = { viewModel.openEvent(it.eventId) },
                         modifier = Modifier.weight(1f),
                     )
+                        }
+                    }
                 }
             }
         }
@@ -162,6 +184,15 @@ fun JwxtScheduleScreen(
 
     state.selectedDetail?.let { detail ->
         CourseDetailSheet(detail = detail, onDismiss = { viewModel.dismissDetail() })
+    }
+    if (state.showSettings) {
+        ScheduleSettingsDialog(
+            terms = state.terms,
+            selectedTermCode = state.selectedTermCode,
+            termStartEpochDay = state.termStartEpochDay,
+            onDismiss = { viewModel.dismissSettings() },
+            onSave = { term, start -> viewModel.saveSettings(term, start) },
+        )
     }
 }
 
@@ -301,4 +332,91 @@ private fun RoundNav(
     ) {
         content()
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScheduleSettingsDialog(
+    terms: List<JwxtNamedCode>,
+    selectedTermCode: String?,
+    termStartEpochDay: Long?,
+    onDismiss: () -> Unit,
+    onSave: (String?, Long?) -> Unit,
+) {
+    var termCode by remember { mutableStateOf(selectedTermCode.orEmpty()) }
+    var startDay by remember { mutableStateOf(termStartEpochDay) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val dateLabel = startDay?.let { formatEpochDay(it) } ?: "未设置"
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("课表设定") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("教务学年学期列表不含开学日（QSSYRQ 为空），学期开始日期需本地填写。")
+                Text("默认学期", style = MaterialTheme.typography.labelMedium)
+                if (terms.isEmpty()) {
+                    OutlinedTextField(
+                        value = termCode,
+                        onValueChange = { termCode = it },
+                        label = { Text("学期代码，如 2025-2026-2") },
+                        singleLine = true,
+                    )
+                } else {
+                    terms.forEach { term ->
+                        val selected = term.code == termCode
+                        Text(
+                            text = term.name.ifBlank { term.code },
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { termCode = term.code }
+                                .padding(vertical = 6.dp),
+                        )
+                    }
+                }
+                Text("学期开始日期：$dateLabel", style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = { showDatePicker = true }) { Text("选择日期") }
+                if (startDay != null) {
+                    TextButton(onClick = { startDay = null }) { Text("清除开学日") }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(termCode.ifBlank { null }, startDay) }) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
+    if (showDatePicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = startDay?.let { it * 86_400_000L },
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        startDay = pickerState.selectedDateMillis?.let { it / 86_400_000L }
+                        showDatePicker = false
+                    },
+                ) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+            },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
+}
+
+private fun formatEpochDay(epochDay: Long): String {
+    val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+    calendar.timeInMillis = epochDay * 86_400_000L
+    val y = calendar.get(java.util.Calendar.YEAR)
+    val m = calendar.get(java.util.Calendar.MONTH) + 1
+    val d = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    return "%04d-%02d-%02d".format(y, m, d)
 }
