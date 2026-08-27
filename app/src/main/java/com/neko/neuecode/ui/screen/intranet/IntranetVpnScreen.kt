@@ -31,12 +31,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.neko.neuecode.domain.vpn.StudentVpnPhase
+import com.neko.neuecode.domain.vpn.VpnStatusArtwork
+import com.neko.neuecode.ui.components.VpnStatusMark
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,7 +76,10 @@ fun IntranetVpnScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            VpnStatusMark(artwork = VpnStatusArtwork.forPhase(state.phase))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 "连接东北大学学生 VPN 后才能访问教务 / 付款码校园接口。",
                 style = MaterialTheme.typography.bodyMedium,
