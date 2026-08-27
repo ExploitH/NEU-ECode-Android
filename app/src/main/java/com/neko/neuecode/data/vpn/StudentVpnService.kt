@@ -77,8 +77,54 @@ class StudentVpnService : VpnService() {
                 override fun onLog(line: String) {
                     controller.onCoreLog(line)
                 }
+
+                override fun establishTun(config: OfficialOpenVpn3Bridge.TunConfig): Int {
+                    return establishFromCore(config)
+                }
+
+                override fun protectSocket(fd: Int): Boolean {
+                    return protect(fd)
+                }
             },
         )
+    }
+
+    private fun establishFromCore(config: OfficialOpenVpn3Bridge.TunConfig): Int {
+        return runCatching {
+            val builder = Builder()
+                .setSession(config.sessionName.ifBlank { "NEU 学生 VPN" })
+                .setMtu(if (config.mtu > 0) config.mtu else 1400)
+                .setBlocking(true)
+            if (config.ipv4.isNotBlank()) {
+                builder.addAddress(config.ipv4, config.ipv4Prefix)
+            }
+            if (config.ipv6.isNotBlank()) {
+                builder.addAddress(config.ipv6, config.ipv6Prefix)
+            }
+            config.dns.forEach { dns ->
+                if (dns.isNotBlank()) builder.addDnsServer(dns)
+            }
+            val routes = config.routes4 + config.routes6
+            if (routes.isEmpty()) {
+                Timber.w("openvpn3 pushed no include routes; keeping split-tunnel (no 0.0.0.0/0)")
+            } else {
+                routes.forEach { cidr -> addCidrRoute(builder, cidr) }
+            }
+            val pfd = builder.establish() ?: return -1
+            tun.getAndSet(pfd)?.close()
+            pfd.detachFd()
+        }.getOrElse { error ->
+            Timber.w(error, "tun establish failed")
+            -1
+        }
+    }
+
+    private fun addCidrRoute(builder: Builder, cidr: String) {
+        val parts = cidr.split("/", limit = 2)
+        val address = parts[0]
+        val prefix = parts.getOrNull(1)?.toIntOrNull() ?: if (address.contains(':')) 128 else 32
+        runCatching { builder.addRoute(address, prefix) }
+            .onFailure { Timber.w(it, "skip route %s", cidr) }
     }
 
     private fun disconnectInternal() {

@@ -29,6 +29,7 @@ private-keys/
 *.aab
 *.ap_
 *.dex
+*.so
 
 # Private backend/deployment sources are not part of the public Android client repo
 /backend/

@@ -21,5 +21,20 @@ interface OfficialOpenVpn3Bridge {
     interface Listener {
         fun onEvent(name: String, info: String, error: Boolean, fatal: Boolean)
         fun onLog(line: String)
+        fun establishTun(config: TunConfig): Int = -1
+        fun protectSocket(fd: Int): Boolean = false
     }
+
+    data class TunConfig(
+        val sessionName: String,
+        val ipv4: String,
+        val ipv4Prefix: Int,
+        val ipv4Gateway: String,
+        val ipv6: String,
+        val ipv6Prefix: Int,
+        val dns: List<String>,
+        val routes4: List<String>,
+        val routes6: List<String>,
+        val mtu: Int,
+    )
 }
