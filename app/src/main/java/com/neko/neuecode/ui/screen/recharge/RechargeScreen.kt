@@ -60,7 +60,7 @@ private const val RECHARGE_LOGIN_URL = "https://pay.neu.edu.cn/drCasLogin?redire
 private const val PAY_HOST_PREFIX = "https://pay.neu.edu.cn"
 private const val PAY_HTTP_HOST_PREFIX = "http://pay.neu.edu.cn"
 private const val WX_CALLBACK = "https://pay.neu.edu.cn/wx/callback"
-private const val APP_UA_SUFFIX = " NEU-eCode-Kotlin/5.33"
+private const val APP_UA_SUFFIX = " NEU-eCode-Kotlin/6.0"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

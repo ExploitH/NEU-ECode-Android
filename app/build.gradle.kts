@@ -32,8 +32,8 @@ android {
         applicationId = "com.neko.neuecode"
         minSdk = 23
         targetSdk = 35
-        versionCode = 66
-        versionName = "5.33-recharge-auto-cas-webview"
+        versionCode = 67
+        versionName = "6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

@@ -378,7 +378,7 @@ Java_com_neko_neuecode_data_vpn_NativeOpenVpn3Bridge_nativeConnect(
         auto client = std::make_unique<AndroidOpenVpnClient>();
         openvpn::ClientAPI::Config config;
         config.content = profile;
-        config.guiVersion = "NEUeCode 5.33";
+        config.guiVersion = "NEUeCode 6.0";
         config.connTimeout = 30;
         config.info = true;
         config.allowLocalLanAccess = true;
