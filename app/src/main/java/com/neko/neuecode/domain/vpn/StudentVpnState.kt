@@ -81,11 +81,23 @@ object StudentVpnReducer {
                     )
                 }
             }
-            is StudentVpnEvent.Failed -> state.copy(
-                phase = StudentVpnPhase.Failed,
-                message = event.message,
-                canAutoRetry = event.canRetry,
-            )
+            is StudentVpnEvent.Failed -> {
+                if (state.phase == StudentVpnPhase.Disconnecting) {
+                    state.copy(
+                        phase = StudentVpnPhase.Idle,
+                        challenge = null,
+                        splitTunnel = false,
+                        message = "已断开",
+                        canAutoRetry = false,
+                    )
+                } else {
+                    state.copy(
+                        phase = StudentVpnPhase.Failed,
+                        message = event.message,
+                        canAutoRetry = event.canRetry,
+                    )
+                }
+            }
             is StudentVpnEvent.CoreAvailability -> state.copy(coreReady = event.ready)
         }
     }

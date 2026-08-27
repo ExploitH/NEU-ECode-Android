@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,6 +36,7 @@ class StudentVpnController @Inject constructor(
 
     @Volatile
     private var pendingChallenge: Crv1Challenge? = null
+    private val disconnectWatchdog = Executors.newSingleThreadScheduledExecutor()
 
     fun prepareIntent(): Intent? = VpnService.prepare(context)
 
@@ -69,7 +72,13 @@ class StudentVpnController @Inject constructor(
 
     fun disconnect() {
         publish(StudentVpnEvent.DisconnectRequested)
+        runCatching { core.disconnect() }
         StudentVpnService.start(context, StudentVpnService.ACTION_DISCONNECT)
+        disconnectWatchdog.schedule({
+            if (_state.value.phase == StudentVpnPhase.Disconnecting) {
+                publish(StudentVpnEvent.Disconnected)
+            }
+        }, 3, TimeUnit.SECONDS)
     }
 
     internal fun sanitizedProfileOrNull(): String? {
@@ -119,11 +128,20 @@ class StudentVpnController @Inject constructor(
                     publish(StudentVpnEvent.Disconnected)
                 }
             }
-            name.equals("CONNECT_ERROR", ignoreCase = true) && pendingChallenge != null -> {
-                // nativeConnect returns after a dynamic challenge; keep waiting for SMS.
+            name.equals("CONNECT_ERROR", ignoreCase = true) &&
+                (_state.value.phase == StudentVpnPhase.Disconnecting ||
+                    _state.value.phase == StudentVpnPhase.Idle ||
+                    pendingChallenge != null) -> {
+                if (_state.value.phase == StudentVpnPhase.Disconnecting) {
+                    publish(StudentVpnEvent.Disconnected)
+                }
             }
             fatal || error -> {
-                if (pendingChallenge == null) {
+                if (_state.value.phase == StudentVpnPhase.Disconnecting) {
+                    publish(StudentVpnEvent.Disconnected)
+                } else if (_state.value.phase == StudentVpnPhase.Idle) {
+                    // nativeConnect often returns CONNECT_ERROR after stop(); stay idle
+                } else if (pendingChallenge == null) {
                     publish(StudentVpnEvent.Failed(userSafeMessage(name, sanitizedInfo), canRetry = false))
                 }
             }

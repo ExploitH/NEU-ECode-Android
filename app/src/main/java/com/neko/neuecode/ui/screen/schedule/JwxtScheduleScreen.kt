@@ -9,6 +9,13 @@
  */
 package com.neko.neuecode.ui.screen.schedule
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +33,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,6 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,8 +72,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun JwxtScheduleScreen(
     onOpenIntranet: () -> Unit = {},
@@ -73,6 +83,24 @@ fun JwxtScheduleScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val document = state.document
     val colors = MaterialTheme.colorScheme
+    val maxWeek = state.maxWeek.coerceAtLeast(1)
+    val pagerState = rememberPagerState(
+        initialPage = WeekPagerIndex.pageOf(state.selectedWeek, maxWeek),
+        pageCount = { maxWeek },
+    )
+    val bounce = remember { Animatable(0f, Float.VectorConverter) }
+    val scope = rememberCoroutineScope()
+    fun goWeek(delta: Int) {
+        val next = state.selectedWeek + delta
+        when {
+            next < 1 -> scope.launch { bounceWeekEdge(bounce, towardPrevious = true) }
+            next > maxWeek -> scope.launch { bounceWeekEdge(bounce, towardPrevious = false) }
+            else -> {
+                viewModel.selectWeek(next)
+                scope.launch { pagerState.animateScrollToPage(WeekPagerIndex.pageOf(next, maxWeek)) }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -114,10 +142,13 @@ fun JwxtScheduleScreen(
             }
             WeekChrome(
                 selectedWeek = state.selectedWeek,
-                maxWeek = state.maxWeek,
-                onPrev = { viewModel.shiftWeek(-1) },
-                onNext = { viewModel.shiftWeek(1) },
-                onSelectWeek = { viewModel.selectWeek(it) },
+                maxWeek = maxWeek,
+                onPrev = { goWeek(-1) },
+                onNext = { goWeek(1) },
+                onSelectWeek = { week ->
+                    viewModel.selectWeek(week)
+                    scope.launch { pagerState.animateScrollToPage(WeekPagerIndex.pageOf(week, maxWeek)) }
+                },
             )
             SingleChoiceSegmentedButtonRow(
                 modifier = Modifier
@@ -146,35 +177,47 @@ fun JwxtScheduleScreen(
                     modifier = Modifier.padding(16.dp),
                 )
             } else {
-                when (state.pane) {
-                    SchedulePane.Week -> {
-                        WeekGridPane(
-                            document = document,
-                            week = state.selectedWeek,
-                            todayWeekday = state.markedWeekday,
-                            onCellClick = { viewModel.openEvent(it.eventId) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    SchedulePane.Today -> {
-                        val todayWeek = com.neko.neuecode.domain.jwxt.ScheduleTodayHighlight.todayPaneWeek(
-                            actualWeek = state.actualWeek,
-                            selectedWeek = state.selectedWeek,
-                        )
-                        if (todayWeek == null) {
-                            Text(
-                                text = "请先在「课表设定」填写学期开始日期，才能确定今天是第几周。",
-                                color = colors.onSurfaceVariant,
-                                modifier = Modifier.padding(16.dp),
+                AnimatedContent(
+                    targetState = state.pane,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "schedule-pane",
+                    modifier = Modifier.weight(1f),
+                ) { pane ->
+                    when (pane) {
+                        SchedulePane.Week -> {
+                            WeekAlbumPager(
+                                document = document,
+                                selectedWeek = state.selectedWeek,
+                                maxWeek = maxWeek,
+                                actualWeek = state.actualWeek,
+                                todayWeekday = state.todayWeekday,
+                                pagerState = pagerState,
+                                bouncePx = bounce.value,
+                                onWeekSettled = { viewModel.selectWeek(it) },
+                                onCellClick = { viewModel.openEvent(it.eventId) },
+                                modifier = Modifier.fillMaxSize(),
                             )
-                        } else {
-                    TodayPane(
-                        document = document,
-                        weekday = state.todayWeekday,
-                        week = todayWeek,
-                        onItemClick = { viewModel.openEvent(it.eventId) },
-                        modifier = Modifier.weight(1f),
-                    )
+                        }
+                        SchedulePane.Today -> {
+                            val todayWeek = com.neko.neuecode.domain.jwxt.ScheduleTodayHighlight.todayPaneWeek(
+                                actualWeek = state.actualWeek,
+                                selectedWeek = state.selectedWeek,
+                            )
+                            if (todayWeek == null) {
+                                Text(
+                                    text = "请先在「课表设定」填写学期开始日期，才能确定今天是第几周。",
+                                    color = colors.onSurfaceVariant,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            } else {
+                                TodayPane(
+                                    document = document,
+                                    weekday = state.todayWeekday,
+                                    week = todayWeek,
+                                    onItemClick = { viewModel.openEvent(it.eventId) },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
                         }
                     }
                 }
@@ -254,7 +297,7 @@ private fun WeekChrome(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RoundNav(enabled = selectedWeek > 1, onClick = onPrev) {
+        RoundNav(enabled = true, onClick = onPrev) {
             Icon(Icons.Outlined.ChevronLeft, contentDescription = "上一周")
         }
         Box {
@@ -309,7 +352,7 @@ private fun WeekChrome(
                 }
             }
         }
-        RoundNav(enabled = selectedWeek < maxWeek, onClick = onNext) {
+        RoundNav(enabled = true, onClick = onNext) {
             Icon(Icons.Outlined.ChevronRight, contentDescription = "下一周")
         }
     }

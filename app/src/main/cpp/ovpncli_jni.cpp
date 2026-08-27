@@ -437,8 +437,12 @@ Java_com_neko_neuecode_data_vpn_NativeOpenVpn3Bridge_nativeConnect(
 extern "C" JNIEXPORT void JNICALL
 Java_com_neko_neuecode_data_vpn_NativeOpenVpn3Bridge_nativeStop(JNIEnv *, jobject) {
     g_stop.store(true);
-    std::lock_guard<std::mutex> lock(g_lock);
-    if (g_client) {
-        g_client->stop();
+    openvpn::ClientAPI::OpenVPNClient *client = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(g_lock);
+        client = g_client;
+    }
+    if (client) {
+        client->stop();
     }
 }

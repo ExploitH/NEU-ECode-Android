@@ -58,6 +58,25 @@ class StudentVpnReducerTest {
     }
 
     @Test
+    fun failedWhileDisconnecting_becomesIdle() {
+        var state = StudentVpnUiState(phase = StudentVpnPhase.Disconnecting, splitTunnel = true)
+        state = StudentVpnReducer.reduce(state, StudentVpnEvent.Failed("CONNECT_ERROR", canRetry = false))
+        assertEquals(StudentVpnPhase.Idle, state.phase)
+        assertEquals("已断开", state.message)
+    }
+
+    @Test
+    fun disconnectFromConnected_goesDisconnectingThenIdle() {
+        var state = StudentVpnUiState(phase = StudentVpnPhase.Connected, splitTunnel = true)
+        state = StudentVpnReducer.reduce(state, StudentVpnEvent.DisconnectRequested)
+        assertEquals(StudentVpnPhase.Disconnecting, state.phase)
+        state = StudentVpnReducer.reduce(state, StudentVpnEvent.Disconnected)
+        assertEquals(StudentVpnPhase.Idle, state.phase)
+        assertFalse(state.splitTunnel)
+        assertEquals("已断开", state.message)
+    }
+
+    @Test
     fun missingOfficialCore_isFailedClosed() {
         val state = StudentVpnReducer.reduce(
             StudentVpnUiState.Idle,

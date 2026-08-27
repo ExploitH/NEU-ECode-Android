@@ -28,7 +28,10 @@ class StudentVpnService : VpnService() {
     @Inject lateinit var core: OfficialOpenVpn3Bridge
 
     private val worker = Executors.newSingleThreadExecutor()
+    private val teardown = Executors.newSingleThreadExecutor()
     private val tun = AtomicReference<ParcelFileDescriptor?>(null)
+    private val tornDown = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val stopping = java.util.concurrent.atomic.AtomicBoolean(false)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
@@ -53,14 +56,21 @@ class StudentVpnService : VpnService() {
                 val code = intent.getStringExtra(EXTRA_CHALLENGE).orEmpty()
                 worker.execute { connectInternal(code) }
             }
-            ACTION_DISCONNECT -> worker.execute { disconnectInternal() }
+            ACTION_DISCONNECT -> {
+                stopping.set(true)
+                runCatching { core.disconnect() }
+                teardown.execute { finishDisconnect() }
+            }
         }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
-        disconnectInternal()
+        stopping.set(true)
+        runCatching { core.disconnect() }
+        finishDisconnect()
         worker.shutdownNow()
+        teardown.shutdownNow()
         super.onDestroy()
     }
 
@@ -70,6 +80,10 @@ class StudentVpnService : VpnService() {
         if (profile == null || credentials == null) {
             controller.onCoreEvent("CORE_MISSING", "profile or credentials missing", error = true, fatal = true)
             stopSelf()
+            return
+        }
+        if (stopping.get()) {
+            finishDisconnect()
             return
         }
         Timber.i(
@@ -88,7 +102,7 @@ class StudentVpnService : VpnService() {
                 override fun onEvent(name: String, info: String, error: Boolean, fatal: Boolean) {
                     controller.onCoreEvent(name, info, error, fatal)
                     if (fatal && !name.equals("DYNAMIC_CHALLENGE", ignoreCase = true)) {
-                        disconnectInternal()
+                        runCatching { core.disconnect() }
                     }
                 }
 
@@ -145,9 +159,11 @@ class StudentVpnService : VpnService() {
             .onFailure { Timber.w(it, "skip route %s", cidr) }
     }
 
-    private fun disconnectInternal() {
+    private fun finishDisconnect() {
+        if (!tornDown.compareAndSet(false, true)) return
         runCatching { core.disconnect() }
         tun.getAndSet(null)?.close()
+        controller.onCoreEvent("DISCONNECTED", "stopped", error = false, fatal = false)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }

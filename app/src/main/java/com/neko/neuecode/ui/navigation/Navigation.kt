@@ -1,5 +1,9 @@
 package com.neko.neuecode.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -83,7 +87,31 @@ fun MainAppScreen(
         NavHost(
             navController = navController,
             startDestination = MainDestinations.PAY,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues),
+            enterTransition = {
+                fadeIn(tween(220)) + slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    tween(280),
+                )
+            },
+            exitTransition = {
+                fadeOut(tween(180)) + slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    tween(240),
+                )
+            },
+            popEnterTransition = {
+                fadeIn(tween(220)) + slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.End,
+                    tween(280),
+                )
+            },
+            popExitTransition = {
+                fadeOut(tween(180)) + slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.End,
+                    tween(240),
+                )
+            },
         ) {
             composable(MainDestinations.PAY) {
                 PayCodeScreen(

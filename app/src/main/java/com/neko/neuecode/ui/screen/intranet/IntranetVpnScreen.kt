@@ -79,12 +79,6 @@ fun IntranetVpnScreen(
                 "连接东北大学学生 VPN 后才能访问教务 / 付款码校园接口。",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "应用内引擎走官方 OpenVPN 3（OpenVPN/openvpn3，MPL-2.0），自研 VpnService 包装。不嵌入 ics-openvpn，也不把 CA / tls-auth 写进公开仓库。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 "账号：" + (state.username ?: "未保存长效登录学号"),
@@ -123,9 +117,10 @@ fun IntranetVpnScreen(
             } else if (state.phase == StudentVpnPhase.Connected || state.phase == StudentVpnPhase.Disconnecting) {
                 Button(
                     onClick = viewModel::disconnect,
+                    enabled = state.phase != StudentVpnPhase.Disconnecting,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("断开")
+                    Text(if (state.phase == StudentVpnPhase.Disconnecting) "正在断开…" else "断开")
                 }
             } else {
                 Button(
