@@ -3,6 +3,7 @@ package com.neko.neuecode.ui.components
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,6 +38,7 @@ fun VpnStatusMark(
     ) {
         Crossfade(
             targetState = artwork,
+            modifier = Modifier.fillMaxSize(),
             animationSpec = tween(durationMillis = CROSSFADE_MS),
             label = "vpn-status-artwork",
         ) { target ->
@@ -45,18 +47,23 @@ fun VpnStatusMark(
                 VpnStatusArtwork.Connecting -> connecting
                 VpnStatusArtwork.Connected -> connected
             }
-            if (composition != null) {
-                val drawSize =
-                    if (target == VpnStatusArtwork.Connecting) {
-                        size * VpnStatusArtwork.CONNECTING_VISUAL_SCALE
-                    } else {
-                        size
-                    }
-                LottieAnimation(
-                    composition = composition,
-                    iterations = LottieConstants.IterateForever,
-                    modifier = Modifier.size(drawSize),
-                )
+            val drawSize =
+                if (target == VpnStatusArtwork.Connecting) {
+                    size * VpnStatusArtwork.CONNECTING_VISUAL_SCALE
+                } else {
+                    size
+                }
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (composition != null) {
+                    LottieAnimation(
+                        composition = composition,
+                        iterations = LottieConstants.IterateForever,
+                        modifier = Modifier.size(drawSize),
+                    )
+                }
             }
         }
     }

@@ -6,6 +6,12 @@ import org.junit.Test
 class VpnStatusArtworkTest {
 
     @Test
+    fun connectingDrawSize_is64PercentOfSharedSlot() {
+        val slot = 220f
+        assertEquals(140.8f, slot * VpnStatusArtwork.CONNECTING_VISUAL_SCALE)
+    }
+
+    @Test
     fun connectingArtwork_isScaledToMatchIdleLogoController() {
         assertEquals(0.64f, VpnStatusArtwork.CONNECTING_VISUAL_SCALE)
     }
