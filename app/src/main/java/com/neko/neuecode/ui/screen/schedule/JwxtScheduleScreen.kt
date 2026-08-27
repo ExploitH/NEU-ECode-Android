@@ -203,9 +203,13 @@ fun JwxtScheduleScreen(
                                 actualWeek = state.actualWeek,
                                 selectedWeek = state.selectedWeek,
                             )
-                            if (todayWeek == null) {
+                            val unavailable = com.neko.neuecode.domain.jwxt.ScheduleTodayCopy.todayUnavailableMessage(
+                                termStartEpochDay = state.termStartEpochDay,
+                                actualWeek = state.actualWeek,
+                            )
+                            if (todayWeek == null || unavailable != null) {
                                 Text(
-                                    text = "请先在「课表设定」填写学期开始日期，才能确定今天是第几周。",
+                                    text = unavailable ?: com.neko.neuecode.domain.jwxt.ScheduleTodayCopy.MISSING_TERM_START,
                                     color = colors.onSurfaceVariant,
                                     modifier = Modifier.padding(16.dp),
                                 )

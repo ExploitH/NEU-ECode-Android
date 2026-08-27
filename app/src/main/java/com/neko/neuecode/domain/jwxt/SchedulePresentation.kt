@@ -35,20 +35,31 @@ data class CourseDetail(
 
 object SchedulePresentation {
     fun cellsForWeek(document: JwxtScheduleDocument, week: Int): List<ScheduleGridCell> {
-        return document.events
-            .filter { week in it.weeks }
-            .sortedWith(compareBy({ it.weekday }, { it.sections.start }))
-            .map { event ->
-                ScheduleGridCell(
-                    weekday = event.weekday,
-                    startSection = event.sections.start,
-                    endSection = event.sections.end,
-                    courseName = event.courseName,
-                    classroom = event.classroom,
-                    courseKey = courseKey(event),
-                    eventId = event.id,
-                )
+        return cellsByWeek(document, week.coerceAtLeast(1)).getOrElse(week - 1) { emptyList() }
+    }
+
+    fun cellsByWeek(document: JwxtScheduleDocument, maxWeek: Int): List<List<ScheduleGridCell>> {
+        val pages = maxWeek.coerceAtLeast(1)
+        val buckets = List(pages) { mutableListOf<ScheduleGridCell>() }
+        for (event in document.events) {
+            val cell = ScheduleGridCell(
+                weekday = event.weekday,
+                startSection = event.sections.start,
+                endSection = event.sections.end,
+                courseName = event.courseName,
+                classroom = event.classroom,
+                courseKey = courseKey(event),
+                eventId = event.id,
+            )
+            for (week in event.weeks) {
+                if (week in 1..pages) {
+                    buckets[week - 1].add(cell)
+                }
             }
+        }
+        return buckets.map { weekCells ->
+            weekCells.sortedWith(compareBy({ it.weekday }, { it.startSection }))
+        }
     }
 
     fun todayItems(document: JwxtScheduleDocument, weekday: Int, week: Int): List<ScheduleTodayItem> {

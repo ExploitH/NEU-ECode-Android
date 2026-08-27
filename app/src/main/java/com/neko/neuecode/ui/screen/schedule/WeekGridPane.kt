@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.neko.neuecode.domain.jwxt.CourseColorHasher
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
+import com.neko.neuecode.domain.jwxt.JwxtSection
 import com.neko.neuecode.domain.jwxt.ScheduleGridCell
 import com.neko.neuecode.domain.jwxt.SchedulePresentation
 
@@ -59,9 +60,25 @@ fun WeekGridPane(
     onCellClick: (ScheduleGridCell) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cells = SchedulePresentation.cellsForWeek(document, week)
-    val sectionTimes = document.sections.associate { it.number to it.name }
-    val maxSection = document.sections.maxOfOrNull { it.number }?.coerceAtLeast(SECTION_COUNT) ?: SECTION_COUNT
+    WeekGridPane(
+        cells = SchedulePresentation.cellsForWeek(document, week),
+        sections = document.sections,
+        todayWeekday = todayWeekday,
+        onCellClick = onCellClick,
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun WeekGridPane(
+    cells: List<ScheduleGridCell>,
+    sections: List<JwxtSection>,
+    todayWeekday: Int,
+    onCellClick: (ScheduleGridCell) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sectionTimes = sections.associate { it.number to it.name }
+    val maxSection = sections.maxOfOrNull { it.number }?.coerceAtLeast(SECTION_COUNT) ?: SECTION_COUNT
     val colors = MaterialTheme.colorScheme
     val rowH = slotHeight + gap
     val counts = weekdayLabels.indices.associate { index ->

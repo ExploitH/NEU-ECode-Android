@@ -37,15 +37,18 @@ class JwxtScheduleRepository @Inject constructor(
             )
         return withContext(Dispatchers.IO) {
             try {
+                val started = System.nanoTime()
                 authenticator.login(
                     username = credentials.username,
                     password = credentials.password,
                     service = JwxtScheduleClient.HOME_SERVICE
                 )
+                val afterLogin = System.nanoTime()
                 val bundle = client.fetchBundle(
                     termCode = termCode,
                     campusCode = campusCode
                 )
+                val afterFetch = System.nanoTime()
                 val document = JwxtScheduleNormalizer.normalize(
                     account = credentials.username,
                     termCode = bundle.term.code,
@@ -55,6 +58,14 @@ class JwxtScheduleRepository @Inject constructor(
                     sections = bundle.sections,
                     schedule = bundle.schedule,
                     generatedAt = utcNow()
+                )
+                val afterNormalize = System.nanoTime()
+                Timber.i(
+                    "JWXT schedule timings login=%dms fetch=%dms normalize=%dms events=%d",
+                    (afterLogin - started) / 1_000_000,
+                    (afterFetch - afterLogin) / 1_000_000,
+                    (afterNormalize - afterFetch) / 1_000_000,
+                    document.summary.eventCount,
                 )
                 Result.Success(document)
             } catch (e: JwxtHumanVerificationRequired) {

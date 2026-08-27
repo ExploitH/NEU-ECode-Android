@@ -88,6 +88,15 @@ class SchedulePresentationTest {
     }
 
     @Test
+    fun cellsByWeek_matchesPerWeekLookup() {
+        val byWeek = SchedulePresentation.cellsByWeek(document, maxWeek = 5)
+        assertEquals(5, byWeek.size)
+        for (week in 1..5) {
+            assertEquals(SchedulePresentation.cellsForWeek(document, week), byWeek[week - 1])
+        }
+    }
+
+    @Test
     fun todayItems_filtersByWeekdayAndWeek() {
         val mondayWeek1 = SchedulePresentation.todayItems(document, weekday = 1, week = 1)
         val mondayWeek4 = SchedulePresentation.todayItems(document, weekday = 1, week = 4)

@@ -55,4 +55,19 @@ class ScheduleTodayHighlightTest {
             ),
         )
     }
+
+    @Test
+    fun todayUnavailableMessage_distinguishesMissingStartFromNotStarted() {
+        assertEquals(
+            ScheduleTodayCopy.MISSING_TERM_START,
+            ScheduleTodayCopy.todayUnavailableMessage(termStartEpochDay = null, actualWeek = null),
+        )
+        assertEquals(
+            ScheduleTodayCopy.TERM_NOT_STARTED,
+            ScheduleTodayCopy.todayUnavailableMessage(termStartEpochDay = 20_000L, actualWeek = null),
+        )
+        assertNull(
+            ScheduleTodayCopy.todayUnavailableMessage(termStartEpochDay = 20_000L, actualWeek = 1),
+        )
+    }
 }
