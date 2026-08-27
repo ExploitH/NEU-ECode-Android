@@ -3,6 +3,7 @@ package com.neko.neuecode.data.remote.jwxt
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
@@ -108,6 +109,22 @@ class JwxtScheduleClient(
     }
 
     private fun postModel(path: String, fields: Map<String, String>, model: String): com.google.gson.JsonElement {
+        var lastError: JwxtProtocolException? = null
+        repeat(3) { attempt ->
+            try {
+                return postModelOnce(path, fields, model)
+            } catch (error: JwxtProtocolException) {
+                lastError = error
+                if (!NeuCampusHttp.isRetryableGatewayStatus(error) && !NeuCampusHttp.looksLikeCampusTransport(error.message.orEmpty())) {
+                    throw error
+                }
+                if (attempt == 2) throw error
+            }
+        }
+        throw lastError ?: JwxtProtocolException("JWXT model $model failed")
+    }
+
+    private fun postModelOnce(path: String, fields: Map<String, String>, model: String): com.google.gson.JsonElement {
         val body = FormBody.Builder().apply {
             fields.forEach { (key, value) -> add(key, value) }
         }.build()
@@ -117,8 +134,12 @@ class JwxtScheduleClient(
             .header("Accept", "application/json, text/javascript, */*; q=0.01")
             .header("X-Requested-With", "XMLHttpRequest")
             .header("Referer", SCHEDULE_REFERER)
+            .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
             .build()
         http.newCall(request).execute().use { response ->
+            if (NeuCampusHttp.isRetryableGateway(response.code)) {
+                throw JwxtProtocolException("JWXT model $model failed: HTTP ${response.code}")
+            }
             if (!response.isSuccessful) {
                 throw JwxtProtocolException("JWXT model $model failed: HTTP ${response.code}")
             }

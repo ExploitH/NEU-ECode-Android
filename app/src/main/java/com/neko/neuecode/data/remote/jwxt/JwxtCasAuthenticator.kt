@@ -1,5 +1,6 @@
 package com.neko.neuecode.data.remote.jwxt
 
+import com.neko.neuecode.data.remote.NeuCampusHttp
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -42,6 +43,7 @@ class JwxtCasAuthenticator(
             Request.Builder()
                 .url(loginUrl)
                 .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
                 .get()
                 .build()
         ).execute()
@@ -53,7 +55,13 @@ class JwxtCasAuthenticator(
         }
         val scriptUrl = JwxtCasCrypto.extractLoginScriptUrl(pageBody, pageUrl)
             ?: throw JwxtAuthenticationException("CAS RSA public key is unavailable")
-        val js = http.newCall(Request.Builder().url(scriptUrl).get().build()).execute().use { response ->
+        val js = http.newCall(
+            Request.Builder()
+                .url(scriptUrl)
+                .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
+                .get()
+                .build()
+        ).execute().use { response ->
             if (!response.isSuccessful) throw JwxtAuthenticationException("CAS RSA public key is unavailable")
             response.body?.string().orEmpty()
         }
@@ -72,10 +80,21 @@ class JwxtCasAuthenticator(
             Request.Builder()
                 .url(submission.action)
                 .header("Referer", page.request.url.toString())
+                .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
                 .post(form)
                 .build()
         ).execute()
+        val resultUrl = result.request.url
+        val resultCode = result.code
         val resultBody = result.use { it.body?.string().orEmpty() }
+        val finalHost = resultUrl.host
+        if (NeuCampusHttp.isEcodeIntermediateLanding(resultCode, finalHost)) {
+            return JwxtCasLoginResult(
+                ok = true,
+                account = username,
+                finalUrl = resultUrl.newBuilder().query(null).fragment(null).build().toString(),
+            )
+        }
         if (!result.isSuccessful) {
             throw JwxtAuthenticationException("CAS password login did not complete")
         }
@@ -84,8 +103,7 @@ class JwxtCasAuthenticator(
         }
         val stillHasForm = resultBody.contains("id=\"loginForm\"", ignoreCase = true) ||
             resultBody.contains("id='loginForm'", ignoreCase = true)
-        val finalHost = result.request.url.host
-        val stillOnLogin = finalHost == "pass.neu.edu.cn" && result.request.url.encodedPath.startsWith("/tpass/login")
+        val stillOnLogin = finalHost == "pass.neu.edu.cn" && resultUrl.encodedPath.startsWith("/tpass/login")
         if (stillHasForm || stillOnLogin) {
             val signal = failurePattern.find(resultBody)?.value
             val suffix = if (signal != null) ": $signal" else ""
@@ -97,7 +115,7 @@ class JwxtCasAuthenticator(
         return JwxtCasLoginResult(
             ok = true,
             account = username,
-            finalUrl = result.request.url.newBuilder().query(null).fragment(null).build().toString()
+            finalUrl = resultUrl.newBuilder().query(null).fragment(null).build().toString()
         )
     }
 }

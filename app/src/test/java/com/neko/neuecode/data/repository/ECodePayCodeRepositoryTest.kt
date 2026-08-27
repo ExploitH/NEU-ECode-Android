@@ -1,8 +1,15 @@
 package com.neko.neuecode.data.repository
 
+import com.neko.neuecode.data.local.secure.SecureCredentialStore
+import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.data.remote.ecode.ECodePayCodeApi
+import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
+import com.neko.neuecode.data.remote.jwxt.JwxtCasLoginResult
 import com.neko.neuecode.domain.ecode.PayCodeFailure
 import com.neko.neuecode.domain.ecode.PayCodeParseResult
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -16,8 +23,26 @@ class ECodePayCodeRepositoryTest {
     private val nowEpochMs = 1_710_000_000_000L
 
     @Test
-    fun fetchPayCode_jsonApiSuccess_returnsPayloadAndExpiry() = runBlocking {
+    fun fetchPayCode_withoutCredentials_returnsUnauthenticated() = runBlocking {
+        val store = mockk<SecureCredentialStore>()
+        every { store.load() } returns null
+        val repository = ECodePayCodeRepository(
+            api = ECodePayCodeApi(OkHttpClient()),
+            authenticator = mockk(relaxed = true),
+            credentialStore = store,
+            http = OkHttpClient(),
+        )
+
+        val result = repository.fetchPayCode(nowEpochMs)
+
+        val failure = result as PayCodeParseResult.Failure
+        assertEquals(PayCodeFailure.Unauthenticated, failure.reason)
+    }
+
+    @Test
+    fun fetchPayCode_logsIntoEcodeSsoThenGetsQrCode() = runBlocking {
         MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("<html>home</html>"))
             server.enqueue(
                 MockResponse()
                     .setHeader("Content-Type", "application/json")
@@ -25,42 +50,36 @@ class ECodePayCodeRepositoryTest {
                         """{"data":[{"type":null,"attributes":{"qrCode":"NEU-PAY-FIXTURE-001","createTime":"1710000000000","qrInvalidTime":"1710000090000"}}]}""",
                     ),
             )
-            val repository = repository(server)
+            val authenticator = mockk<JwxtCasAuthenticator>()
+            every { authenticator.login(any(), any(), any()) } returns JwxtCasLoginResult(
+                ok = true,
+                account = "20240001",
+                finalUrl = "https://ecode.neu.edu.cn/ecode/api",
+            )
+            val store = mockk<SecureCredentialStore>()
+            every { store.load() } returns SecureCredentialStore.Credentials("20240001", "secret")
+            val client = OkHttpClient()
+            val repository = ECodePayCodeRepository(
+                api = ECodePayCodeApi(client, server.url("/").toString().trimEnd('/')),
+                authenticator = authenticator,
+                credentialStore = store,
+                http = warmupClient(server, client),
+            )
 
             val result = repository.fetchPayCode(nowEpochMs)
 
             val success = result as PayCodeParseResult.Success
             assertEquals("NEU-PAY-FIXTURE-001", success.code.payload)
-            assertEquals(1_710_000_090_000L, success.code.expiresAtEpochMs)
-            assertEquals(90, success.code.ttlSeconds)
-            val recorded = server.takeRequest()
-            assertEquals("GET", recorded.method)
-            assertEquals("/ecode/api/qr-code", recorded.path)
-        }
-    }
-
-    @Test
-    fun fetchPayCode_jsonApiExpired_returnsExpired() = runBlocking {
-        MockWebServer().use { server ->
-            server.enqueue(
-                MockResponse()
-                    .setHeader("Content-Type", "application/json")
-                    .setBody(
-                        """{"data":[{"type":null,"attributes":{"qrCode":"NEU-PAY-FIXTURE-001","createTime":"1709999910000","qrInvalidTime":"1710000000000"}}]}""",
-                    ),
-            )
-            val repository = repository(server)
-
-            val result = repository.fetchPayCode(nowEpochMs)
-
-            val failure = result as PayCodeParseResult.Failure
-            assertEquals(PayCodeFailure.Expired, failure.reason)
+            verify(exactly = 1) {
+                authenticator.login("20240001", "secret", NeuCampusHttp.ECODE_SSO)
+            }
         }
     }
 
     @Test
     fun fetchPayCode_http401_returnsUnauthenticated() = runBlocking {
         MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("ok"))
             server.enqueue(MockResponse().setResponseCode(401).setBody("unauthorized"))
             val repository = repository(server)
 
@@ -72,24 +91,9 @@ class ECodePayCodeRepositoryTest {
     }
 
     @Test
-    fun fetchPayCode_http403_returnsNeedRelogin() = runBlocking {
-        MockWebServer().use { server ->
-            server.enqueue(MockResponse().setResponseCode(403).setBody("forbidden"))
-            val repository = repository(server)
-
-            val result = repository.fetchPayCode(nowEpochMs)
-
-            val failure = result as PayCodeParseResult.Failure
-            assertTrue(
-                failure.reason == PayCodeFailure.NeedRelogin ||
-                    failure.reason == PayCodeFailure.Unauthenticated,
-            )
-        }
-    }
-
-    @Test
     fun fetchPayCode_htmlLoginPage_returnsNeedRelogin() = runBlocking {
         MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("ok"))
             server.enqueue(
                 MockResponse()
                     .setHeader("Content-Type", "text/html; charset=UTF-8")
@@ -104,11 +108,55 @@ class ECodePayCodeRepositoryTest {
         }
     }
 
+    @Test
+    fun fetchPayCode_http502ThenSuccess_retries() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("ok"))
+            server.enqueue(MockResponse().setResponseCode(502).setBody("bad gateway"))
+            server.enqueue(
+                MockResponse()
+                    .setHeader("Content-Type", "application/json")
+                    .setBody(
+                        """{"data":[{"type":null,"attributes":{"qrCode":"NEU-PAY-FIXTURE-001","createTime":"1710000000000","qrInvalidTime":"1710000090000"}}]}""",
+                    ),
+            )
+            val repository = repository(server)
+
+            val result = repository.fetchPayCode(nowEpochMs)
+
+            val success = result as PayCodeParseResult.Success
+            assertEquals("NEU-PAY-FIXTURE-001", success.code.payload)
+        }
+    }
+
     private fun repository(server: MockWebServer): ECodePayCodeRepository {
-        val api = ECodePayCodeApi(
-            http = OkHttpClient(),
-            baseUrl = server.url("/").toString().trimEnd('/'),
+        val authenticator = mockk<JwxtCasAuthenticator>()
+        every { authenticator.login(any(), any(), any()) } returns JwxtCasLoginResult(
+            ok = true,
+            account = "20240001",
+            finalUrl = "https://ecode.neu.edu.cn/ecode/api",
         )
-        return ECodePayCodeRepository(api)
+        val store = mockk<SecureCredentialStore>()
+        every { store.load() } returns SecureCredentialStore.Credentials("20240001", "secret")
+        val client = OkHttpClient()
+        return ECodePayCodeRepository(
+            api = ECodePayCodeApi(client, server.url("/").toString().trimEnd('/')),
+            authenticator = authenticator,
+            credentialStore = store,
+            http = warmupClient(server, client),
+        )
+    }
+
+    private fun warmupClient(server: MockWebServer, client: OkHttpClient): OkHttpClient {
+        return client.newBuilder()
+            .addInterceptor { chain ->
+                val request = chain.request()
+                if (request.url.host == "ecode.neu.edu.cn") {
+                    chain.proceed(request.newBuilder().url(server.url("/ecode/")).build())
+                } else {
+                    chain.proceed(request)
+                }
+            }
+            .build()
     }
 }

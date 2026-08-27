@@ -1,6 +1,7 @@
 package com.neko.neuecode.data.repository
 
 import com.neko.neuecode.data.local.secure.SecureCredentialStore
+import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
 import com.neko.neuecode.data.remote.jwxt.JwxtHumanVerificationRequired
 import com.neko.neuecode.data.remote.jwxt.JwxtScheduleClient
@@ -56,7 +57,13 @@ class JwxtScheduleRepository @Inject constructor(
             Result.Error(e, "教务登录需要短信/验证码，请稍后在网页完成验证后再试")
         } catch (e: Exception) {
             Timber.e(e, "JWXT schedule sync failed")
-            Result.Error(e, e.message ?: "课表同步失败")
+            val message = e.message.orEmpty()
+            val userMessage = if (NeuCampusHttp.looksLikeCampusTransport(message)) {
+                "课表同步超时或网关 502，请确认内网连接后重试"
+            } else {
+                e.message ?: "课表同步失败"
+            }
+            Result.Error(e, userMessage)
         }
     }
 

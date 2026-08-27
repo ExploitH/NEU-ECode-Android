@@ -27,6 +27,7 @@ class ECodePayCodeApi(
             .url(baseUrl.trimEnd('/') + QR_CODE_PATH)
             .get()
             .header("Accept", "application/json")
+            .header("User-Agent", com.neko.neuecode.data.remote.NeuCampusHttp.BROWSER_USER_AGENT)
             .build()
         http.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()

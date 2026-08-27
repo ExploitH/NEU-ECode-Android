@@ -3,6 +3,7 @@ package com.neko.neuecode.di
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import com.neko.neuecode.data.local.cookie.PersistentCookieJar
+import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.data.remote.api.PersonalApi
 import com.neko.neuecode.data.remote.ecode.ECodePayCodeApi
 import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
@@ -76,11 +77,19 @@ object NetworkModule {
 
         return OkHttpClient.Builder()
             .cookieJar(cookieJar)
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
+                    .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                    .build()
+                chain.proceed(request)
+            }
             .addInterceptor(metadataInterceptor)
             .addInterceptor(loggingInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(45, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(45, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .followRedirects(false)
             .followSslRedirects(false)
             .build()

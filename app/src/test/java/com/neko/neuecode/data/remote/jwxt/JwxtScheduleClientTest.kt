@@ -1,5 +1,6 @@
 package com.neko.neuecode.data.remote.jwxt
 
+import com.neko.neuecode.data.remote.NeuCampusHttp
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -59,6 +60,32 @@ class JwxtScheduleClientTest {
             val detail = server.takeRequest()
             assertEquals("/jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do", detail.path)
             assertEquals("XNXQDM=2026-2027-1&XQDM=01", detail.body.readUtf8())
+            assertEquals(
+                NeuCampusHttp.BROWSER_USER_AGENT,
+                detail.getHeader("User-Agent"),
+            )
+        }
+    }
+
+    @Test
+    fun getCurrentTerm_retriesOnceAfterHttp502() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setResponseCode(502).setBody("bad gateway"))
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"code":"0","datas":{"cxmrxnxq":{"rows":[{"XNXQDM":"2026-2027-1","XNXQMC":"2026-2027学年秋季学期"}]}}}"""
+                )
+            )
+            val client = JwxtScheduleClient(
+                http = OkHttpClient(),
+                baseUrl = server.url("/").toString().trimEnd('/')
+            )
+
+            val term = client.getCurrentTerm()
+
+            assertEquals("2026-2027-1", term.code)
+            assertEquals("/jwapp/sys/jwpubapp/modules/gg/cxmrxnxq.do", server.takeRequest().path)
+            assertEquals("/jwapp/sys/jwpubapp/modules/gg/cxmrxnxq.do", server.takeRequest().path)
         }
     }
 }

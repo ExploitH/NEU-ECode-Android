@@ -1,0 +1,32 @@
+package com.neko.neuecode.data.remote
+
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class NeuCampusHttpTest {
+
+    @Test
+    fun ecodeApi404_isIntermediateLandingNotAuthFailure() {
+        assertTrue(NeuCampusHttp.isEcodeIntermediateLanding(404, "ecode.neu.edu.cn"))
+        assertFalse(NeuCampusHttp.isEcodeIntermediateLanding(404, "jwxt.neu.edu.cn"))
+        assertFalse(NeuCampusHttp.isEcodeIntermediateLanding(401, "ecode.neu.edu.cn"))
+    }
+
+    @Test
+    fun gatewayStatuses_areRetryable() {
+        assertTrue(NeuCampusHttp.isRetryableGateway(502))
+        assertTrue(NeuCampusHttp.isRetryableGateway(503))
+        assertTrue(NeuCampusHttp.isRetryableGateway(504))
+        assertFalse(NeuCampusHttp.isRetryableGateway(200))
+        assertFalse(NeuCampusHttp.isRetryableGateway(401))
+    }
+
+    @Test
+    fun timeoutAnd502_lookLikeCampusTransport() {
+        assertTrue(NeuCampusHttp.looksLikeCampusTransport("failed to connect to jwxt.neu.edu.cn"))
+        assertTrue(NeuCampusHttp.looksLikeCampusTransport("JWXT model cxmrxnxq failed: HTTP 502"))
+        assertTrue(NeuCampusHttp.looksLikeCampusTransport("timeout"))
+        assertFalse(NeuCampusHttp.looksLikeCampusTransport("账号或密码错误"))
+    }
+}
