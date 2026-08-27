@@ -32,7 +32,8 @@ class PersistentCookieJar @Inject constructor(
     private val cookieStore = ConcurrentHashMap<String, MutableSet<SerializableCookie>>()
     
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    
+    private val storeLock = Any()
+
     @Volatile
     private var isRestored = false
     
@@ -57,17 +58,16 @@ class PersistentCookieJar @Inject constructor(
         }
         
         if (serializedCookies.isEmpty()) return
-        
-        // Save to in-memory store
-        val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
-        synchronized(domainCookies) {
-            // Remove old cookies with same name
-            serializedCookies.forEach { newCookie ->
-                domainCookies.removeIf { it.name == newCookie.name }
+
+        synchronized(storeLock) {
+            val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
+            synchronized(domainCookies) {
+                serializedCookies.forEach { newCookie ->
+                    domainCookies.removeIf { it.name == newCookie.name }
+                }
+                domainCookies.addAll(serializedCookies)
+                domainCookies.removeIf { it.isExpired() }
             }
-            domainCookies.addAll(serializedCookies)
-            // Remove expired cookies
-            domainCookies.removeIf { it.isExpired() }
         }
         
         Timber.d("Saved ${serializedCookies.size} cookies for domain: $domain")
@@ -111,25 +111,31 @@ class PersistentCookieJar @Inject constructor(
      */
     suspend fun restoreFromStorage() {
         if (isRestored) return
-        
+
         try {
             val savedCookies = cookieSerializer.loadCookies()
-            
-            // Group by domain
-            savedCookies.groupBy { it.domain }.forEach { (domain, cookies) ->
-                val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
-                synchronized(domainCookies) {
-                    domainCookies.clear()
-                    domainCookies.addAll(cookies)
+            val merged = synchronized(storeLock) {
+                if (isRestored) return
+                val existing = mutableListOf<SerializableCookie>()
+                cookieStore.values.forEach { cookies ->
+                    synchronized(cookies) {
+                        existing.addAll(cookies)
+                    }
                 }
+                val mergedCookies = CookieMerge.merge(existing = existing, loaded = savedCookies)
+                cookieStore.clear()
+                mergedCookies.groupBy { it.domain }.forEach { (domain, cookies) ->
+                    val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
+                    synchronized(domainCookies) {
+                        domainCookies.clear()
+                        domainCookies.addAll(cookies)
+                    }
+                }
+                isRestored = true
+                mergedCookies
             }
-            
-            isRestored = true
-            Timber.i("Restored ${savedCookies.size} cookies from storage")
-            
-            // Sync all cookies to WebView
-            syncAllToWebView(savedCookies)
-            
+            Timber.i("Restored ${merged.size} cookies from storage")
+            syncAllToWebView(merged)
         } catch (e: Exception) {
             Timber.e(e, "Failed to restore cookies from storage")
         }

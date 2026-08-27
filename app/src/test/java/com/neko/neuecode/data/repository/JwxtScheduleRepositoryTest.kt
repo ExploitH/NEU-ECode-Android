@@ -38,6 +38,7 @@ class JwxtScheduleRepositoryTest {
     fun loadMySchedule_logsInOnceThenNormalizesReadOnlyBundle() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody("""{"code":"0","datas":{"cxmrxnxq":{"rows":[{"XNXQDM":"2026-2027-1","XNXQMC":"2026-2027学年秋季学期"}]}}}"""))
+            server.enqueue(MockResponse().setBody("<html>kbapp</html>"))
             server.enqueue(MockResponse().setBody("""{"code":"0","datas":{"getMyScheduledCampus":[{"id":"01","name":"浑南校区"}]}}"""))
             server.enqueue(MockResponse().setBody("""{"code":"0","datas":{"getMySectionList":[{"code":1,"name":"第一节","id":"13"}]}}"""))
             server.enqueue(

@@ -39,6 +39,7 @@ class JwxtScheduleClientTest {
     @Test
     fun fetchBundle_usesObservedScheduleEndpoints() = runBlocking {
         MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("<html>kbapp</html>"))
             server.enqueue(MockResponse().setBody("""{"code":"0","datas":{"getMyScheduledCampus":[{"id":"01","name":"浑南校区"}]}}"""))
             server.enqueue(MockResponse().setBody("""{"code":"0","datas":{"getMySectionList":[{"code":1,"name":"第一节"}]}}"""))
             server.enqueue(MockResponse().setBody("""{"code":"0","datas":{"getMyScheduleDetail":{"arrangedList":[{"courseName":"测试课程"}],"notArrangeList":[],"practiceList":[]}}}"""))
@@ -53,6 +54,7 @@ class JwxtScheduleClientTest {
             assertEquals("浑南校区", bundle.campus.name)
             assertEquals(1, bundle.sections.size)
             assertEquals(1, bundle.schedule.getAsJsonArray("arrangedList").size())
+            assertEquals("/jwapp/sys/kbapp/*default/index.do", server.takeRequest().path)
             assertEquals("/jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do", server.takeRequest().path)
             val section = server.takeRequest()
             assertEquals("/jwapp/sys/kbapp/api/wdkbcx/getMySectionList.do", section.path)
@@ -64,6 +66,28 @@ class JwxtScheduleClientTest {
                 NeuCampusHttp.BROWSER_USER_AGENT,
                 detail.getHeader("User-Agent"),
             )
+        }
+    }
+
+    @Test
+    fun getCampuses_retriesOnceAfterHttp403() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("<html>kbapp</html>"))
+            server.enqueue(MockResponse().setResponseCode(403).setBody("Forbidden"))
+            server.enqueue(MockResponse().setBody("<html>kbapp</html>"))
+            server.enqueue(MockResponse().setBody("""{"code":"0","datas":{"getMyScheduledCampus":[{"id":"01","name":"浑南校区"}]}}"""))
+            val client = JwxtScheduleClient(
+                http = OkHttpClient(),
+                baseUrl = server.url("/").toString().trimEnd('/')
+            )
+
+            val campuses = client.getCampuses("2025-2026-2")
+
+            assertEquals(1, campuses.size())
+            assertEquals("/jwapp/sys/kbapp/*default/index.do", server.takeRequest().path)
+            assertEquals("/jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do", server.takeRequest().path)
+            assertEquals("/jwapp/sys/kbapp/*default/index.do", server.takeRequest().path)
+            assertEquals("/jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do", server.takeRequest().path)
         }
     }
 
