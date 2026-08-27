@@ -3,7 +3,11 @@ package com.neko.neuecode.di
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import com.neko.neuecode.data.local.cookie.PersistentCookieJar
+import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.data.remote.api.PersonalApi
+import com.neko.neuecode.data.remote.ecode.ECodePayCodeApi
+import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
+import com.neko.neuecode.data.remote.jwxt.JwxtScheduleClient
 import com.neko.neuecode.data.remote.model.AppLoginResponse
 import com.neko.neuecode.data.remote.model.AppLoginResponseDeserializer
 import com.neko.neuecode.data.remote.model.LoginCheckData
@@ -73,11 +77,23 @@ object NetworkModule {
 
         return OkHttpClient.Builder()
             .cookieJar(cookieJar)
+            .addInterceptor { chain ->
+                val original = chain.request()
+                val builder = original.newBuilder()
+                if (!NeuCampusHttp.shouldKeepExistingHeader(original.header("User-Agent"))) {
+                    builder.header("User-Agent", NeuCampusHttp.userAgentFor(original.url.host))
+                }
+                if (!NeuCampusHttp.shouldKeepExistingHeader(original.header("Accept-Language"))) {
+                    builder.header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                }
+                chain.proceed(builder.build())
+            }
             .addInterceptor(metadataInterceptor)
             .addInterceptor(loggingInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(45, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(45, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .followRedirects(false)
             .followSslRedirects(false)
             .build()
@@ -109,6 +125,24 @@ object NetworkModule {
     @Singleton
     fun providePersonalApi(retrofit: Retrofit): PersonalApi {
         return retrofit.create(PersonalApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideJwxtCasAuthenticator(okHttpClient: OkHttpClient): JwxtCasAuthenticator {
+        return JwxtCasAuthenticator(okHttpClient)
+    }
+
+    @Provides
+    @Singleton
+    fun provideJwxtScheduleClient(okHttpClient: OkHttpClient): JwxtScheduleClient {
+        return JwxtScheduleClient(okHttpClient)
+    }
+
+    @Provides
+    @Singleton
+    fun provideECodePayCodeApi(okHttpClient: OkHttpClient): ECodePayCodeApi {
+        return ECodePayCodeApi(okHttpClient)
     }
 
     private fun sanitizeHeaders(headers: Headers): String {

@@ -1,0 +1,15 @@
+OpenVPN 3 core (https://github.com/OpenVPN/openvpn3)
+
+This Android client elects the Mozilla Public License 2.0 option from
+the upstream dual license (AGPL-3.0-only OR MPL-2.0, with an OpenSSL
+exception that is unused here).
+
+Upstream commit pinned when integrating the Kotlin wrapper:
+a2b602cd086aaf9613a8f7c51b1e0824373db9f7
+
+The C++ sources are not copied into this public tree. A local checkout
+for future NDK/SWIG builds lives outside git on the builder host.
+
+Full MPL-2.0 text:
+https://www.mozilla.org/en-US/MPL/2.0/
+upstream copy: LICENSES/MPL-2.0.txt in OpenVPN/openvpn3

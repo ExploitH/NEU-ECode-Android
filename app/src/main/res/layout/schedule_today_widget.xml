@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_schedule_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:background="@drawable/schedule_widget_bg">
+
+    <TextView
+        android:id="@+id/widget_schedule_kicker"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="今日课表"
+        android:textAllCaps="false"
+        android:textColor="#64748B"
+        android:textSize="11sp" />
+
+    <TextView
+        android:id="@+id/widget_schedule_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="课表·今日"
+        android:textStyle="bold"
+        android:textColor="#0F172A"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/widget_schedule_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:lineSpacingExtra="4dp"
+        android:text="点按打开课表"
+        android:textColor="#334155"
+        android:textSize="13sp" />
+</LinearLayout>

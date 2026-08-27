@@ -1,8 +1,10 @@
 package com.neko.neuecode.data.remote.crypto
 
+import android.content.Context
 import android.util.Base64
 import com.neko.neuecode.data.remote.config.ProtocolConfig
 import com.neko.neuecode.data.remote.config.RemoteProtocolConfigRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import timber.log.Timber
@@ -23,6 +25,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class NeuRsaCrypto @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val remoteConfigRepository: RemoteProtocolConfigRepository
 ) {
 
@@ -30,6 +33,8 @@ class NeuRsaCrypto @Inject constructor(
         private const val CIPHER_TRANSFORMATION = "RSA/ECB/PKCS1Padding"
         private const val RSA_1024_CIPHER_BLOCK_SIZE = 128
         private const val RSA_1024_PKCS1_MAX_PLAINTEXT = 117
+        private const val DEVICE_PREFS = "neu_device"
+        private const val KEY_INSTALL_IMEI = "install_imei"
     }
 
     @Volatile
@@ -54,7 +59,7 @@ class NeuRsaCrypto @Inject constructor(
             put("mobile_type", "android")
         }
 
-        val plaintext = json.toString()
+        val plaintext = compactJson(json)
         Timber.d("Login content plaintext length: ${plaintext.length}")
 
         return encryptWithPublicKey(plaintext, loadPublicKey(currentConfig().rsaPublicKeyPem()))
@@ -64,7 +69,7 @@ class NeuRsaCrypto @Inject constructor(
         val json = JSONObject().apply {
             values.forEach { (key, value) -> put(key, value) }
         }
-        val plaintext = json.toString()
+        val plaintext = compactJson(json)
         Timber.d("Content map plaintext length: ${plaintext.length}")
         return encryptWithPublicKey(plaintext, loadPublicKey(currentConfig().rsaPublicKeyPem()))
     }
@@ -85,21 +90,28 @@ class NeuRsaCrypto @Inject constructor(
             put("ticket", ticket)
         }
 
-        val plaintext = json.toString()
-            .replace("\n", "")
-            .replace(" ", "")
+        val plaintext = compactJson(json)
         Timber.d("Authorization-str plaintext length: ${plaintext.length}")
 
         return encryptWithPublicKey(plaintext, loadPublicKey(currentConfig().rsaPublicKeyPem()))
     }
 
     /**
-     * Stable app-side device identifier placeholder.
-     *
-     * Production forks should replace this with an install-scoped value stored in
-     * app-private storage. It is deliberately non-identifying in the public tree.
+     * Install-scoped 32-hex device id (UUID without dashes).
+     * Official 智慧东大 sends this as `imei`; all-zero placeholders are rejected as 参数错误.
      */
-    fun stableImei(): String = "00000000000000000000000000000000"
+    @Synchronized
+    fun stableImei(): String {
+        val prefs = context.getSharedPreferences(DEVICE_PREFS, Context.MODE_PRIVATE)
+        DeviceImei.normalize(prefs.getString(KEY_INSTALL_IMEI, null))?.let { return it }
+        val created = DeviceImei.newInstallId()
+        prefs.edit().putString(KEY_INSTALL_IMEI, created).apply()
+        return created
+    }
+
+    private fun compactJson(json: JSONObject): String {
+        return json.toString()
+    }
 
     suspend fun warmUpRemoteConfig() {
         val config = remoteConfigRepository.getProtocolConfig(forceRefresh = false)

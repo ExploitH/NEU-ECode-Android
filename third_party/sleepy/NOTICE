@@ -1,0 +1,10 @@
+Sleepy 轻课表 (https://github.com/lingion/sleepy)
+
+The week-grid and schedule chrome in
+`app/src/main/java/com/neko/neuecode/ui/screen/schedule/`
+are adapted from Sleepy under GNU GPL v3.0.
+
+Copyright (C) Lingion and contributors
+Copyright (C) NEU eCode contributors
+
+See LICENSE for the full GPL-3.0 text.

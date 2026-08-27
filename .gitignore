@@ -29,6 +29,7 @@ private-keys/
 *.aab
 *.ap_
 *.dex
+*.so
 
 # Private backend/deployment sources are not part of the public Android client repo
 /backend/
@@ -45,6 +46,12 @@ private-keys/
 /deploy/
 /scripts/deploy*
 /release-assets/
+/.hermes/
+
+# VPN profile secrets — never commit live CA / tls-auth / auth files
+*.ovpn
+/app/src/main/assets/vpn/
+/app/src/debug/assets/vpn/
 
 # Logs
 *.log

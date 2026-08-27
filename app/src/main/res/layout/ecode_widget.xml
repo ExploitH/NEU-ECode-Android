@@ -18,19 +18,19 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="NEU e码通"
-            android:textColor="#1F2937"
+            android:text="e码通"
+            android:textColor="#0F172A"
             android:textStyle="bold"
-            android:textSize="16sp" />
+            android:textSize="15sp" />
 
         <TextView
             android:id="@+id/widget_refresh"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingHorizontal="10dp"
+            android:paddingHorizontal="12dp"
             android:paddingVertical="6dp"
             android:background="@drawable/ecode_widget_chip_bg"
-            android:text="刷新"
+            android:text="刷新余额"
             android:textColor="#1D4ED8"
             android:textStyle="bold"
             android:textSize="12sp" />
@@ -40,45 +40,55 @@
         android:id="@+id/widget_status"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="点击刷新"
-        android:textColor="#6B7280"
-        android:textSize="12sp" />
+        android:layout_marginTop="4dp"
+        android:text="点码刷新付款码"
+        android:textColor="#64748B"
+        android:textSize="11sp" />
 
     <ImageView
         android:id="@+id/widget_qr"
-        android:layout_width="140dp"
-        android:layout_height="140dp"
+        android:layout_width="148dp"
+        android:layout_height="148dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="8dp"
+        android:padding="8dp"
+        android:background="@drawable/widget_qr_frame"
+        android:scaleType="fitCenter"
         android:adjustViewBounds="true"
-        android:contentDescription="二维码" />
+        android:contentDescription="付款码" />
 
-    <TextView
-        android:id="@+id/widget_card_balance"
+    <LinearLayout
+        android:id="@+id/widget_balances"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="校园卡：--"
-        android:textColor="#111827"
-        android:textStyle="bold"
-        android:textSize="14sp" />
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/widget_network_balance"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="网费：--"
-        android:textColor="#374151"
-        android:textSize="13sp" />
+        <TextView
+            android:id="@+id/widget_card_balance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="校园卡  --"
+            android:textColor="#0F172A"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/widget_network_balance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="网费  --"
+            android:textColor="#475569"
+            android:textSize="12sp" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/widget_updated_at"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="4dp"
         android:text="未刷新"
-        android:textColor="#6B7280"
-        android:textSize="12sp" />
+        android:textColor="#94A3B8"
+        android:textSize="11sp" />
 </LinearLayout>
