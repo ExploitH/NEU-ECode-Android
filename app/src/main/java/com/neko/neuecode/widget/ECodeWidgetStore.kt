@@ -12,14 +12,16 @@ object ECodeWidgetStore {
     private const val KEY_NETWORK = "network_balance"
     private const val KEY_UPDATED = "updated_at"
     private const val KEY_STATUS = "status"
+    private const val KEY_SHOW_BALANCE = "show_balance"
     private const val QR_FILE = "ecode_widget_qr.png"
 
     data class Snapshot(
         val cardBalance: String = "",
         val networkBalance: String = "",
         val updatedAt: Long = 0L,
-        val status: String = "点击刷新",
-        val hasQr: Boolean = false
+        val status: String = "点码刷新付款码",
+        val hasQr: Boolean = false,
+        val showBalance: Boolean = true,
     )
 
     fun load(context: Context): Snapshot {
@@ -29,18 +31,21 @@ object ECodeWidgetStore {
             cardBalance = prefs.getString(KEY_CARD, "") ?: "",
             networkBalance = prefs.getString(KEY_NETWORK, "") ?: "",
             updatedAt = prefs.getLong(KEY_UPDATED, 0L),
-            status = prefs.getString(KEY_STATUS, "点击刷新") ?: "点击刷新",
-            hasQr = file.exists() && file.length() > 0
+            status = prefs.getString(KEY_STATUS, "点码刷新付款码") ?: "点码刷新付款码",
+            hasQr = file.exists() && file.length() > 0,
+            showBalance = prefs.getBoolean(KEY_SHOW_BALANCE, true),
         )
     }
 
-    fun saveBalances(context: Context, card: String, network: String, updatedAt: Long, status: String) {
+    fun saveBalances(context: Context, card: String, network: String, updatedAt: Long, status: String? = null) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_CARD, card)
             .putString(KEY_NETWORK, network)
             .putLong(KEY_UPDATED, updatedAt)
-            .putString(KEY_STATUS, status)
+            .apply {
+                if (status != null) putString(KEY_STATUS, status)
+            }
             .apply()
     }
 
@@ -51,11 +56,22 @@ object ECodeWidgetStore {
             .apply()
     }
 
+    fun saveShowBalance(context: Context, show: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_SHOW_BALANCE, show)
+            .apply()
+    }
+
     fun saveQrBitmap(context: Context, bitmap: Bitmap) {
         val file = File(context.filesDir, QR_FILE)
         FileOutputStream(file).use { out ->
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
+    }
+
+    fun clearQr(context: Context) {
+        File(context.filesDir, QR_FILE).delete()
     }
 
     fun loadQrBitmap(context: Context): Bitmap? {

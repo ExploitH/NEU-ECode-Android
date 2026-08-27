@@ -63,7 +63,7 @@ class JwxtScheduleViewModel @Inject constructor(
         val cached = cacheStore.load()
         val actualWeek = actualWeekOf(settings.termStartEpochDay, todayEpochDay)
         val selectedTerm = settings.defaultTermCode ?: cached?.term?.code
-        val week = (actualWeek ?: 1).coerceAtLeast(1)
+        val week = actualWeek ?: 1
         _uiState.value = _uiState.value.copy(
             document = cached,
             selectedTermCode = selectedTerm,
@@ -219,8 +219,7 @@ class JwxtScheduleViewModel @Inject constructor(
     }
 
     private fun actualWeekOf(termStartEpochDay: Long?, todayEpochDay: Long): Int? {
-        if (termStartEpochDay == null) return null
-        return ScheduleWeekClock.weekOf(termStartEpochDay, todayEpochDay)
+        return ScheduleWeekClock.actualWeek(termStartEpochDay, todayEpochDay)
     }
 
     private fun maxWeekOf(document: JwxtScheduleDocument?): Int {

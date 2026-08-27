@@ -10,6 +10,10 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 
 object PayCodeQrEncoder {
     fun encode(payload: String, sizePx: Int = 640): ImageBitmap? {
+        return encodeBitmap(payload, sizePx)?.asImageBitmap()
+    }
+
+    fun encodeBitmap(payload: String, sizePx: Int = 640): Bitmap? {
         if (payload.isBlank() || sizePx <= 0) return null
         return try {
             val matrix = QRCodeWriter().encode(
@@ -36,7 +40,7 @@ object PayCodeQrEncoder {
             }
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
                 setPixels(pixels, 0, width, 0, 0, width, height)
-            }.asImageBitmap()
+            }
         } catch (_: Exception) {
             null
         }

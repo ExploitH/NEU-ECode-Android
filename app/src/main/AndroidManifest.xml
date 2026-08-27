@@ -79,7 +79,8 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.neko.neuecode.widget.ACTION_REFRESH" />
+                <action android:name="com.neko.neuecode.widget.ACTION_REFRESH_QR" />
+                <action android:name="com.neko.neuecode.widget.ACTION_REFRESH_BALANCE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

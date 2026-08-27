@@ -4,24 +4,45 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="12dp"
-    android:background="@drawable/ecode_widget_bg">
+    android:padding="14dp"
+    android:background="@drawable/schedule_widget_bg">
+
+    <TextView
+        android:id="@+id/widget_schedule_kicker"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="本周课表"
+        android:textColor="#64748B"
+        android:textSize="11sp" />
 
     <TextView
         android:id="@+id/widget_schedule_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
         android:text="课表·本周"
         android:textStyle="bold"
-        android:textColor="#1F2937"
+        android:textColor="#0F172A"
         android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/widget_schedule_counts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="一 二 三 四 五 六 日"
+        android:textColor="#475569"
+        android:textSize="11sp" />
 
     <TextView
         android:id="@+id/widget_schedule_body"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
+        android:lineSpacingExtra="3dp"
+        android:maxLines="6"
+        android:ellipsize="end"
         android:text="点按打开课表"
-        android:textColor="#374151"
-        android:textSize="13sp" />
+        android:textColor="#334155"
+        android:textSize="12sp" />
 </LinearLayout>

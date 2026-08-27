@@ -22,6 +22,12 @@ object ScheduleWeekClock {
         return ((delta / 7L) + 1L).toInt().coerceAtLeast(1)
     }
 
+    fun actualWeek(termStartEpochDay: Long?, todayEpochDay: Long): Int? {
+        if (termStartEpochDay == null) return null
+        if (todayEpochDay < termStartEpochDay) return null
+        return weekOf(termStartEpochDay, todayEpochDay)
+    }
+
     fun weekdayOf(epochDay: Long): Int {
         // 1970-01-01 was Thursday. Convert ISO day (1=Mon..7=Sun).
         val thursdayBased = ((epochDay % 7L) + 7L) % 7L

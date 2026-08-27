@@ -40,6 +40,13 @@ class ScheduleWeekClockTest {
     }
 
     @Test
+    fun actualWeek_isNullBeforeTermStart() {
+        assertEquals(null, ScheduleWeekClock.actualWeek(termStartEpochDay = 10_000L, todayEpochDay = 9_999L))
+        assertEquals(1, ScheduleWeekClock.actualWeek(termStartEpochDay = 10_000L, todayEpochDay = 10_000L))
+        assertEquals(null, ScheduleWeekClock.actualWeek(termStartEpochDay = null, todayEpochDay = 10_000L))
+    }
+
+    @Test
     fun localEpochDay_matchesUtcMidnightDivision() {
         val day = ScheduleWeekClock.localEpochDay(2026, 8, 24)
         assertEquals(day, ScheduleWeekClock.fromUtcMillis(day * 86_400_000L))

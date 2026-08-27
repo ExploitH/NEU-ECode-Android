@@ -9,29 +9,26 @@ import android.widget.RemoteViews
 import com.neko.neuecode.MainActivity
 import com.neko.neuecode.R
 import com.neko.neuecode.data.local.schedule.JwxtScheduleCacheStore
-import com.neko.neuecode.domain.jwxt.SchedulePresentation
+import com.neko.neuecode.data.local.schedule.PrefsScheduleSettingsStore
 import com.neko.neuecode.domain.jwxt.ScheduleWeekClock
-import java.util.Calendar
 
 class ScheduleTodayWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         val document = JwxtScheduleCacheStore(context).load()
-        val todayEpochDay = todayEpochDay()
-        val weekday = ScheduleWeekClock.weekdayOf(todayEpochDay)
-        val week = ScheduleWeekClock.weekOf(null, todayEpochDay)
-        val items = document?.let { SchedulePresentation.todayItems(it, weekday, week) }.orEmpty()
-        val lines = if (items.isEmpty()) {
-            "今天没有课\n点按打开课表"
-        } else {
-            items.take(4).joinToString("\n") { item ->
-                "${item.startTime} ${item.courseName} ${item.classroom}".trim()
-            }
-        }
-        val open = pendingOpenApp(context)
+        val settings = PrefsScheduleSettingsStore(context).load()
+        val today = ScheduleWeekClock.todayEpochDay()
+        val weekday = ScheduleWeekClock.todayWeekday()
+        val actualWeek = ScheduleWeekClock.actualWeek(settings.termStartEpochDay, today)
+        val lines = ScheduleWidgetPresentation.todayLines(document, actualWeek, weekday)
+        val open = pendingOpenApp(context, 1101)
         appWidgetIds.forEach { id ->
             val views = RemoteViews(context.packageName, R.layout.schedule_today_widget)
-            views.setTextViewText(R.id.widget_schedule_title, "课表·今日")
-            views.setTextViewText(R.id.widget_schedule_body, lines)
+            views.setTextViewText(R.id.widget_schedule_kicker, "今日课表")
+            views.setTextViewText(
+                R.id.widget_schedule_title,
+                ScheduleWidgetPresentation.todaySubtitle(actualWeek, weekday),
+            )
+            views.setTextViewText(R.id.widget_schedule_body, lines.joinToString("\n"))
             views.setOnClickPendingIntent(R.id.widget_schedule_root, open)
             appWidgetManager.updateAppWidget(id, views)
         }
@@ -41,19 +38,30 @@ class ScheduleTodayWidgetProvider : AppWidgetProvider() {
 class ScheduleWeekWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         val document = JwxtScheduleCacheStore(context).load()
-        val week = ScheduleWeekClock.weekOf(null, todayEpochDay())
-        val cells = document?.let { SchedulePresentation.cellsForWeek(it, week) }.orEmpty()
-        val body = if (cells.isEmpty()) {
-            "本周暂无课表缓存\n点按打开课表"
+        val settings = PrefsScheduleSettingsStore(context).load()
+        val today = ScheduleWeekClock.todayEpochDay()
+        val actualWeek = ScheduleWeekClock.actualWeek(settings.termStartEpochDay, today)
+        val title = if (actualWeek == null) "学期尚未开始" else "第${actualWeek}周"
+        val counts = if (actualWeek == null) {
+            "请在课表设定开学日后再看本周"
         } else {
-            cells.take(8).joinToString("\n") { cell ->
-                "周${cell.weekday} 第${cell.startSection}-${cell.endSection}节 ${cell.courseName}"
+            val dayCounts = ScheduleWidgetPresentation.weekDayCounts(document, actualWeek)
+            val names = listOf("一", "二", "三", "四", "五", "六", "日")
+            names.zip(dayCounts).joinToString("  ") { (name, count) ->
+                if (count == 0) "$name·无" else "$name·$count"
             }
         }
-        val open = pendingOpenApp(context)
+        val body = if (actualWeek == null) {
+            "开学日前不展示周课表"
+        } else {
+            ScheduleWidgetPresentation.weekLines(document, actualWeek, limit = 5).joinToString("\n")
+        }
+        val open = pendingOpenApp(context, 1102)
         appWidgetIds.forEach { id ->
             val views = RemoteViews(context.packageName, R.layout.schedule_week_widget)
-            views.setTextViewText(R.id.widget_schedule_title, "课表·本周")
+            views.setTextViewText(R.id.widget_schedule_kicker, "本周课表")
+            views.setTextViewText(R.id.widget_schedule_title, title)
+            views.setTextViewText(R.id.widget_schedule_counts, counts)
             views.setTextViewText(R.id.widget_schedule_body, body)
             views.setOnClickPendingIntent(R.id.widget_schedule_root, open)
             appWidgetManager.updateAppWidget(id, views)
@@ -61,23 +69,14 @@ class ScheduleWeekWidgetProvider : AppWidgetProvider() {
     }
 }
 
-private fun pendingOpenApp(context: Context): PendingIntent {
+private fun pendingOpenApp(context: Context, requestCode: Int): PendingIntent {
     val intent = Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
     return PendingIntent.getActivity(
         context,
-        1101,
+        requestCode,
         intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
-}
-
-private fun todayEpochDay(): Long {
-    val calendar = Calendar.getInstance()
-    calendar.set(Calendar.HOUR_OF_DAY, 0)
-    calendar.set(Calendar.MINUTE, 0)
-    calendar.set(Calendar.SECOND, 0)
-    calendar.set(Calendar.MILLISECOND, 0)
-    return calendar.timeInMillis / 86_400_000L
 }
