@@ -107,4 +107,10 @@ Android 侧流程见 [docs/CLIENT_UPDATE_FLOW.md](docs/CLIENT_UPDATE_FLOW.md)。
 
 ## 许可证
 
-Apache License 2.0。详见 [LICENSE](LICENSE)。
+GNU General Public License v3.0。详见 [LICENSE](LICENSE)。
+
+本仓库整体按 GPL-3.0 分发。第三方组件保持各自许可证：
+
+- OpenVPN 3 core：上游双许可 AGPL-3.0-only OR MPL-2.0，本客户端选择 **MPL-2.0**（见 `third_party/openvpn3/NOTICE`）
+- Gradle Wrapper：Apache-2.0
+- ZXing `com.google.zxing:core`：Apache-2.0

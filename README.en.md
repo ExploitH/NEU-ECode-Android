@@ -107,4 +107,10 @@ This repository is a cleaned open-source snapshot of an actively developed perso
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE).
+GNU General Public License v3.0. See [LICENSE](LICENSE).
+
+This repository is distributed as a whole under GPL-3.0. Third-party components keep their own licenses:
+
+- OpenVPN 3 core: upstream dual license AGPL-3.0-only OR MPL-2.0; this client elects **MPL-2.0** (see `third_party/openvpn3/NOTICE`)
+- Gradle Wrapper: Apache-2.0
+- ZXing `com.google.zxing:core`: Apache-2.0
