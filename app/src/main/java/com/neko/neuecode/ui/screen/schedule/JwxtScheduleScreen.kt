@@ -64,7 +64,7 @@ fun JwxtScheduleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp),
         ) {
             Text(
                 text = state.message,
@@ -79,7 +79,7 @@ fun JwxtScheduleScreen(
                     Text("去内网连接")
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -100,8 +100,8 @@ fun JwxtScheduleScreen(
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                 ) { Text("今日") }
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            if (state.loading) {
+            Spacer(modifier = Modifier.height(4.dp))
+            if (state.loading && document == null) {
                 CircularProgressIndicator()
             }
             if (document == null && !state.loading) {
