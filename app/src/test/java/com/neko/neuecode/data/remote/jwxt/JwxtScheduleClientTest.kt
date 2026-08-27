@@ -68,6 +68,31 @@ class JwxtScheduleClientTest {
     }
 
     @Test
+    fun listTerms_postsObservedXnxqcxForm() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"code":"0","datas":{"xnxqcx":{"rows":[{"DM":"2025-2026-1","MC":"2025-2026学年秋季学期"},{"DM":"2025-2026-2","MC":"2025-2026学年春季学期"}]}}}"""
+                )
+            )
+            val client = JwxtScheduleClient(
+                http = OkHttpClient(),
+                baseUrl = server.url("/").toString().trimEnd('/')
+            )
+
+            val terms = client.listTerms()
+
+            assertEquals(2, terms.size)
+            assertEquals("2025-2026-2", terms[1].code)
+            assertEquals("2025-2026学年春季学期", terms[1].name)
+            val recorded = server.takeRequest()
+            assertEquals("POST", recorded.method)
+            assertEquals("/jwapp/sys/jwpubapp/modules/zdgl/xnxqcx.do", recorded.path)
+            assertEquals("*order=%2BDM", recorded.body.readUtf8())
+        }
+    }
+
+    @Test
     fun getCurrentTerm_retriesOnceAfterHttp502() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setResponseCode(502).setBody("bad gateway"))

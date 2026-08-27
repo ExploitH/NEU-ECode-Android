@@ -6,7 +6,9 @@ import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
 import com.neko.neuecode.data.remote.jwxt.JwxtHumanVerificationRequired
 import com.neko.neuecode.data.remote.jwxt.JwxtScheduleClient
 import com.neko.neuecode.data.remote.jwxt.JwxtScheduleNormalizer
+import com.neko.neuecode.domain.jwxt.JwxtNamedCode
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
+import com.neko.neuecode.domain.jwxt.JwxtTermCatalog
 import com.neko.neuecode.domain.model.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -67,6 +69,36 @@ class JwxtScheduleRepository @Inject constructor(
                     e.message ?: "课表同步失败"
                 }
                 Result.Error(e, userMessage)
+            }
+        }
+    }
+
+    suspend fun listRecentTerms(currentCode: String? = null, limit: Int = 8): Result<List<JwxtNamedCode>> {
+        val credentials = credentialStore.load()
+            ?: return Result.Error(
+                Exception("No saved credentials"),
+                "需要先开启长效登录，才能同步教务课表"
+            )
+        return withContext(Dispatchers.IO) {
+            try {
+                authenticator.login(
+                    username = credentials.username,
+                    password = credentials.password,
+                    service = JwxtScheduleClient.HOME_SERVICE
+                )
+                val current = currentCode ?: client.getCurrentTerm().code
+                val recent = JwxtTermCatalog.recent(
+                    terms = client.listTerms(),
+                    currentCode = current,
+                    limit = limit,
+                )
+                Result.Success(recent)
+            } catch (e: JwxtHumanVerificationRequired) {
+                Timber.w(e, "JWXT CAS requires human verification")
+                Result.Error(e, "教务登录需要短信/验证码，请稍后在网页完成验证后再试")
+            } catch (e: Exception) {
+                Timber.e(e, "JWXT term list failed")
+                Result.Error(e, e.message ?: "学期列表同步失败")
             }
         }
     }

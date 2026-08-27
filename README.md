@@ -114,3 +114,4 @@ GNU General Public License v3.0。详见 [LICENSE](LICENSE)。
 - OpenVPN 3 core：上游双许可 AGPL-3.0-only OR MPL-2.0，本客户端选择 **MPL-2.0**（见 `third_party/openvpn3/NOTICE`）
 - Gradle Wrapper：Apache-2.0
 - ZXing `com.google.zxing:core`：Apache-2.0
+- 课表周网格 / 周次选择改编自 [Sleepy](https://github.com/lingion/sleepy)（GPL-3.0，见 `third_party/sleepy/NOTICE`）

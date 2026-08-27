@@ -114,3 +114,4 @@ This repository is distributed as a whole under GPL-3.0. Third-party components 
 - OpenVPN 3 core: upstream dual license AGPL-3.0-only OR MPL-2.0; this client elects **MPL-2.0** (see `third_party/openvpn3/NOTICE`)
 - Gradle Wrapper: Apache-2.0
 - ZXing `com.google.zxing:core`: Apache-2.0
+- Week grid / week chip adapted from [Sleepy](https://github.com/lingion/sleepy) (GPL-3.0, see `third_party/sleepy/NOTICE`)

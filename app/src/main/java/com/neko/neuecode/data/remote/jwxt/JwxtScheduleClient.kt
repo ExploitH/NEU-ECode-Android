@@ -43,6 +43,22 @@ class JwxtScheduleClient(
         return JwxtNamedCode(code, row.stringOrEmpty("XNXQMC"))
     }
 
+    fun listTerms(): List<JwxtNamedCode> {
+        val model = postModel(
+            "/jwapp/sys/jwpubapp/modules/zdgl/xnxqcx.do",
+            mapOf("*order" to "+DM"),
+            "xnxqcx"
+        ).asJsonObject
+        val rows = model.getAsJsonArray("rows") ?: throw JwxtProtocolException("JWXT term-list model has no rows")
+        return rows.mapNotNull { element ->
+            val row = element.asJsonObject
+            val code = row.stringOrEmpty("DM").ifBlank { row.stringOrEmpty("XNXQDM") }
+            if (code.isBlank()) return@mapNotNull null
+            val name = row.stringOrEmpty("MC").ifBlank { row.stringOrEmpty("XNXQMC") }
+            JwxtNamedCode(code, name)
+        }
+    }
+
     fun getCampuses(termCode: String): JsonArray {
         val model = postModel(
             "/jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do",
