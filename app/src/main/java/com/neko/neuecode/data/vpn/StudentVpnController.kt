@@ -7,6 +7,7 @@ import com.neko.neuecode.data.local.secure.SecureCredentialStore
 import com.neko.neuecode.domain.vpn.Crv1Challenge
 import com.neko.neuecode.domain.vpn.OfficialOpenVpn3Bridge
 import com.neko.neuecode.domain.vpn.StudentVpnEvent
+import com.neko.neuecode.domain.vpn.StudentVpnPhase
 import com.neko.neuecode.domain.vpn.StudentVpnReducer
 import com.neko.neuecode.domain.vpn.StudentVpnUiState
 import com.neko.neuecode.domain.vpn.StudentVpnProfileSanitizer
@@ -82,29 +83,49 @@ class StudentVpnController @Inject constructor(
         val sanitizedInfo = info
             .replace(Regex("CRV1:[^\\s]+"), "CRV1:[REDACTED]")
             .replace(Regex("(?i)password[=:].*"), "password=[REDACTED]")
-        Timber.i("openvpn3 event %s error=%s fatal=%s", name, error, fatal)
+        Timber.i("openvpn3 event %s error=%s fatal=%s info=%s", name, error, fatal, sanitizedInfo)
         when {
             name.equals("CONNECTED", ignoreCase = true) -> {
                 pendingChallenge = null
                 publish(StudentVpnEvent.Connected(splitTunnel = true))
             }
-            name.equals("DISCONNECTED", ignoreCase = true) -> {
-                pendingChallenge = null
-                publish(StudentVpnEvent.Disconnected)
-            }
-            name.contains("AUTH_FAILED", ignoreCase = true) || info.contains("CRV1:") -> {
-                val cookie = extractCrv1(info)
+            name.equals("DYNAMIC_CHALLENGE", ignoreCase = true) ||
+                name.contains("AUTH_FAILED", ignoreCase = true) ||
+                info.contains("CRV1:") -> {
+                val cookie = extractCrv1(info) ?: info.trim().takeIf { it.startsWith("CRV1:") }
                 val challenge = cookie?.let(Crv1Challenge::parse)
+                    ?: Crv1Challenge.parse(info.trim())
                 if (challenge != null) {
                     pendingChallenge = challenge
                     publish(StudentVpnEvent.Challenge(challenge))
+                } else if (name.equals("DYNAMIC_CHALLENGE", ignoreCase = true)) {
+                    pendingChallenge = Crv1Challenge(
+                        stateId = "unknown",
+                        username = _state.value.username.orEmpty(),
+                        challengeText = "请输入短信验证码",
+                        responseRequired = true,
+                        echo = false,
+                    )
+                    publish(StudentVpnEvent.Challenge(pendingChallenge!!))
                 } else {
                     pendingChallenge = null
                     publish(StudentVpnEvent.Failed("认证失败，请重新获取短信验证码后再试一次", canRetry = false))
                 }
             }
+            name.equals("DISCONNECTED", ignoreCase = true) -> {
+                if (pendingChallenge == null &&
+                    _state.value.phase != StudentVpnPhase.NeedChallenge
+                ) {
+                    publish(StudentVpnEvent.Disconnected)
+                }
+            }
+            name.equals("CONNECT_ERROR", ignoreCase = true) && pendingChallenge != null -> {
+                // nativeConnect returns after a dynamic challenge; keep waiting for SMS.
+            }
             fatal || error -> {
-                publish(StudentVpnEvent.Failed(userSafeMessage(name, sanitizedInfo), canRetry = false))
+                if (pendingChallenge == null) {
+                    publish(StudentVpnEvent.Failed(userSafeMessage(name, sanitizedInfo), canRetry = false))
+                }
             }
         }
     }
@@ -118,6 +139,10 @@ class StudentVpnController @Inject constructor(
 
     internal fun consumeChallengePassword(response: String): String? {
         return pendingChallenge?.buildPassword(response)
+    }
+
+    internal fun pendingCookieOrNull(): String? {
+        return pendingChallenge?.rawCookie?.takeIf { it.startsWith("CRV1:") }
     }
 
     private fun extractCrv1(info: String): String? {

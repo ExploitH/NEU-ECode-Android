@@ -14,6 +14,10 @@ object StudentVpnUserMessage {
                 combined.contains("eval_config", ignoreCase = true) ||
                 combined.contains("ERR_INVALID", ignoreCase = true) ->
                 "学生 VPN 配置无法被官方 OpenVPN 3 解析"
+            combined.contains("FOREGROUND_FAIL", ignoreCase = true) ->
+                "前台服务启动失败"
+            combined.contains("External PKI", ignoreCase = true) ->
+                "学生 VPN 不使用客户端证书"
             combined.contains("AUTH_FAILED", ignoreCase = true) ->
                 "认证失败，请重新获取短信验证码后再试一次"
             combined.contains("校园") ||

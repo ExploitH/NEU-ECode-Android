@@ -66,13 +66,21 @@ object StudentVpnReducer {
                 phase = StudentVpnPhase.Disconnecting,
                 message = "正在断开…",
             )
-            StudentVpnEvent.Disconnected -> state.copy(
-                phase = StudentVpnPhase.Idle,
-                challenge = null,
-                splitTunnel = false,
-                message = "已断开",
-                canAutoRetry = false,
-            )
+            StudentVpnEvent.Disconnected -> {
+                if (state.phase == StudentVpnPhase.NeedChallenge ||
+                    state.phase == StudentVpnPhase.SubmittingChallenge
+                ) {
+                    state
+                } else {
+                    state.copy(
+                        phase = StudentVpnPhase.Idle,
+                        challenge = null,
+                        splitTunnel = false,
+                        message = "已断开",
+                        canAutoRetry = false,
+                    )
+                }
+            }
             is StudentVpnEvent.Failed -> state.copy(
                 phase = StudentVpnPhase.Failed,
                 message = event.message,

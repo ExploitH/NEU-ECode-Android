@@ -13,6 +13,7 @@ interface OfficialOpenVpn3Bridge {
         username: String,
         password: String,
         challengeResponse: String?,
+        challengeCookie: String? = null,
         listener: Listener,
     )
 

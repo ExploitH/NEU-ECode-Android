@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -30,7 +31,22 @@ class StudentVpnService : VpnService() {
     private val tun = AtomicReference<ParcelFileDescriptor?>(null)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIFICATION_ID, notification("学生 VPN"))
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification("学生 VPN"),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification("学生 VPN"))
+            }
+        } catch (error: Exception) {
+            Timber.e(error, "startForeground failed")
+            controller.onCoreEvent("FOREGROUND_FAIL", error.javaClass.simpleName, error = true, fatal = true)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
             ACTION_CONNECT -> worker.execute { connectInternal(null) }
             ACTION_SUBMIT -> {
@@ -60,16 +76,18 @@ class StudentVpnService : VpnService() {
             "starting official openvpn3 session\n%s",
             StudentVpnProfileSanitizer.redactedForLog(profile),
         )
-        val response = challengeCode?.takeIf { it.isNotBlank() }?.let { controller.consumeChallengePassword(it) }
+        val response = challengeCode?.takeIf { it.isNotBlank() }
+        val cookie = if (response != null) controller.pendingCookieOrNull() else null
         core.connect(
             sanitizedProfile = profile,
             username = credentials.username,
             password = credentials.password,
             challengeResponse = response,
+            challengeCookie = cookie,
             listener = object : OfficialOpenVpn3Bridge.Listener {
                 override fun onEvent(name: String, info: String, error: Boolean, fatal: Boolean) {
                     controller.onCoreEvent(name, info, error, fatal)
-                    if (fatal) {
+                    if (fatal && !name.equals("DYNAMIC_CHALLENGE", ignoreCase = true)) {
                         disconnectInternal()
                     }
                 }

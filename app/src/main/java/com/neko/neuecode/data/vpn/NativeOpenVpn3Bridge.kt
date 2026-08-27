@@ -20,6 +20,7 @@ class NativeOpenVpn3Bridge @Inject constructor() : OfficialOpenVpn3Bridge {
         username: String,
         password: String,
         challengeResponse: String?,
+        challengeCookie: String?,
         listener: OfficialOpenVpn3Bridge.Listener,
     ) {
         if (!LIBRARY_LOADED) {
@@ -33,6 +34,7 @@ class NativeOpenVpn3Bridge @Inject constructor() : OfficialOpenVpn3Bridge {
             username,
             password,
             challengeResponse.orEmpty(),
+            challengeCookie.orEmpty(),
         )
         nativeSetListener(null)
         listenerRef.set(null)
@@ -98,6 +100,7 @@ class NativeOpenVpn3Bridge @Inject constructor() : OfficialOpenVpn3Bridge {
         username: String,
         password: String,
         challenge: String,
+        cookie: String,
     ): String
     private external fun nativeStop()
 

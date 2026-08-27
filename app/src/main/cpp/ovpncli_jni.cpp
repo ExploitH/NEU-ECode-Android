@@ -4,9 +4,11 @@
 
 #include <jni.h>
 
+#include <android/log.h>
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -96,6 +98,7 @@ void emit_event(const std::string &name, const std::string &info, bool error, bo
 }
 
 void emit_log(const std::string &line) {
+    __android_log_print(ANDROID_LOG_INFO, "ovpncli", "%s", line.c_str());
     bool attached = false;
     JNIEnv *env = attach_env(&attached);
     if (!env) {
@@ -362,57 +365,73 @@ Java_com_neko_neuecode_data_vpn_NativeOpenVpn3Bridge_nativeConnect(
     jstring jprofile,
     jstring jusername,
     jstring jpassword,
-    jstring jchallenge) {
+    jstring jchallenge,
+    jstring jcookie) {
     const std::string profile = jstring_to_std(env, jprofile);
     const std::string username = jstring_to_std(env, jusername);
     const std::string password = jstring_to_std(env, jpassword);
     const std::string challenge = jstring_to_std(env, jchallenge);
+    const std::string cookie = jstring_to_std(env, jcookie);
 
     g_stop.store(false);
-    auto client = std::make_unique<AndroidOpenVpnClient>();
-    openvpn::ClientAPI::Config config;
-    config.content = profile;
-    config.guiVersion = "NEUeCode 5.33";
-    config.connTimeout = 30;
-    config.info = true;
-    config.allowLocalLanAccess = true;
+    try {
+        auto client = std::make_unique<AndroidOpenVpnClient>();
+        openvpn::ClientAPI::Config config;
+        config.content = profile;
+        config.guiVersion = "NEUeCode 5.33";
+        config.connTimeout = 30;
+        config.info = true;
+        config.allowLocalLanAccess = true;
+        // Student profile is auth-user-pass + tls-auth, no client cert.
+        config.disableClientCert = true;
 #ifdef OPENVPN_PLATFORM_ANDROID
-    config.enableRouteEmulation = false;
+        config.enableRouteEmulation = false;
 #endif
 
-    const auto eval = client->eval_config(config);
-    if (eval.error) {
-        return env->NewStringUTF(eval.message.c_str());
-    }
+        const auto eval = client->eval_config(config);
+        if (eval.error) {
+            __android_log_print(ANDROID_LOG_ERROR, "ovpncli", "eval_config: %s", eval.message.c_str());
+            return env->NewStringUTF(eval.message.c_str());
+        }
 
-    openvpn::ClientAPI::ProvideCreds creds;
-    creds.username = username;
-    creds.password = password;
-    if (!challenge.empty()) {
-        creds.response = challenge;
-        creds.dynamicChallengeCookie = challenge;
-    }
-    const auto cred_status = client->provide_creds(creds);
-    if (cred_status.error) {
-        return env->NewStringUTF(cred_status.message.c_str());
-    }
+        openvpn::ClientAPI::ProvideCreds creds;
+        creds.username = username;
+        creds.password = password;
+        if (!challenge.empty()) {
+            creds.response = challenge;
+            creds.dynamicChallengeCookie = cookie.empty() ? challenge : cookie;
+        }
+        const auto cred_status = client->provide_creds(creds);
+        if (cred_status.error) {
+            __android_log_print(ANDROID_LOG_ERROR, "ovpncli", "provide_creds: %s", cred_status.message.c_str());
+            return env->NewStringUTF(cred_status.message.c_str());
+        }
 
-    {
-        std::lock_guard<std::mutex> lock(g_lock);
-        g_owned = std::move(client);
-        g_client = g_owned.get();
-    }
+        {
+            std::lock_guard<std::mutex> lock(g_lock);
+            g_owned = std::move(client);
+            g_client = g_owned.get();
+        }
 
-    const auto status = g_owned->connect();
-    {
-        std::lock_guard<std::mutex> lock(g_lock);
-        g_client = nullptr;
-        g_owned.reset();
+        const auto status = g_owned->connect();
+        {
+            std::lock_guard<std::mutex> lock(g_lock);
+            g_client = nullptr;
+            g_owned.reset();
+        }
+        if (status.error) {
+            const std::string message = status.message.empty() ? status.status : status.message;
+            __android_log_print(ANDROID_LOG_ERROR, "ovpncli", "connect: %s", message.c_str());
+            return env->NewStringUTF(message.c_str());
+        }
+        return env->NewStringUTF("");
+    } catch (const std::exception &ex) {
+        __android_log_print(ANDROID_LOG_ERROR, "ovpncli", "exception: %s", ex.what());
+        return env->NewStringUTF(ex.what());
+    } catch (...) {
+        __android_log_print(ANDROID_LOG_ERROR, "ovpncli", "unknown native exception");
+        return env->NewStringUTF("unknown native exception");
     }
-    if (status.error) {
-        return env->NewStringUTF(status.message.empty() ? status.status.c_str() : status.message.c_str());
-    }
-    return env->NewStringUTF("");
 }
 
 extern "C" JNIEXPORT void JNICALL

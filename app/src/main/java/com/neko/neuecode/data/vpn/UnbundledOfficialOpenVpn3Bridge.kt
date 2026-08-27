@@ -18,6 +18,7 @@ class UnbundledOfficialOpenVpn3Bridge @Inject constructor() : OfficialOpenVpn3Br
         username: String,
         password: String,
         challengeResponse: String?,
+        challengeCookie: String?,
         listener: OfficialOpenVpn3Bridge.Listener,
     ) {
         listener.onEvent(

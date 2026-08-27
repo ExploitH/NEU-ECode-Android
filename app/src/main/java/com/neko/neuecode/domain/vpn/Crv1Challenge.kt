@@ -14,6 +14,7 @@ data class Crv1Challenge(
     val challengeText: String,
     val responseRequired: Boolean,
     val echo: Boolean,
+    val rawCookie: String = "",
 ) {
     fun buildPassword(response: String): String = "CRV1::$stateId::$response"
 
@@ -39,6 +40,7 @@ data class Crv1Challenge(
                 challengeText = parts[4],
                 responseRequired = "R" in flags,
                 echo = "E" in flags,
+                rawCookie = cookie,
             )
         }
     }

@@ -32,6 +32,23 @@ class StudentVpnReducerTest {
     }
 
     @Test
+    fun disconnectDuringChallenge_keepsNeedChallenge() {
+        var state: StudentVpnUiState = StudentVpnUiState.Idle
+        state = StudentVpnReducer.reduce(state, StudentVpnEvent.ConnectRequested)
+        val challenge = Crv1Challenge(
+            stateId = "s1",
+            username = "20240001",
+            challengeText = "SMS",
+            responseRequired = true,
+            echo = false,
+        )
+        state = StudentVpnReducer.reduce(state, StudentVpnEvent.Challenge(challenge))
+        state = StudentVpnReducer.reduce(state, StudentVpnEvent.Disconnected)
+        assertEquals(StudentVpnPhase.NeedChallenge, state.phase)
+        assertEquals("SMS", state.challenge?.challengeText)
+    }
+
+    @Test
     fun challengeRejected_doesNotAutoRetry() {
         var state = StudentVpnUiState(phase = StudentVpnPhase.SubmittingChallenge)
         state = StudentVpnReducer.reduce(state, StudentVpnEvent.Failed("AUTH_FAILED", canRetry = false))

@@ -18,6 +18,7 @@ class Crv1ChallengeTest {
         assertEquals("state-abc", parsed.stateId)
         assertEquals("20240001", parsed.username)
         assertEquals("请输入短信验证码", parsed.challengeText)
+        assertEquals(cookie, parsed.rawCookie)
         assertTrue(parsed.responseRequired)
         assertTrue(parsed.echo)
         assertFalse(parsed.toString().contains("20240001"))
