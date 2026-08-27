@@ -33,4 +33,30 @@ class VpnStatusArtworkTest {
             assertEquals(phase.name, VpnStatusArtwork.Idle, VpnStatusArtwork.forPhase(phase))
         }
     }
+
+    @Test
+    fun connectThenDisconnect_returnsToIdleArtwork() {
+        val flow = listOf(
+            StudentVpnPhase.Idle,
+            StudentVpnPhase.Connecting,
+            StudentVpnPhase.NeedChallenge,
+            StudentVpnPhase.SubmittingChallenge,
+            StudentVpnPhase.Connected,
+            StudentVpnPhase.Disconnecting,
+            StudentVpnPhase.Idle,
+        )
+        val art = flow.map(VpnStatusArtwork::forPhase)
+        assertEquals(
+            listOf(
+                VpnStatusArtwork.Idle,
+                VpnStatusArtwork.Connecting,
+                VpnStatusArtwork.Idle,
+                VpnStatusArtwork.Connecting,
+                VpnStatusArtwork.Connected,
+                VpnStatusArtwork.Connecting,
+                VpnStatusArtwork.Idle,
+            ),
+            art,
+        )
+    }
 }
