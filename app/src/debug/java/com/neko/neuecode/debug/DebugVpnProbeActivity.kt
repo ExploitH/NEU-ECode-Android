@@ -24,15 +24,23 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.neko.neuecode.data.local.secure.SecureCredentialStore
+import com.neko.neuecode.data.repository.ECodePayCodeRepository
+import com.neko.neuecode.data.repository.JwxtScheduleRepository
 import com.neko.neuecode.data.vpn.StudentVpnController
+import com.neko.neuecode.domain.ecode.PayCodeParseResult
+import com.neko.neuecode.domain.model.Result
 import com.neko.neuecode.domain.vpn.StudentVpnPhase
 import com.neko.neuecode.ui.theme.NeuECodeTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -41,6 +49,8 @@ class DebugVpnProbeActivity : ComponentActivity() {
 
     @Inject lateinit var credentials: SecureCredentialStore
     @Inject lateinit var controller: StudentVpnController
+    @Inject lateinit var payCodeRepository: ECodePayCodeRepository
+    @Inject lateinit var scheduleRepository: JwxtScheduleRepository
 
     private val prepare = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -64,7 +74,9 @@ class DebugVpnProbeActivity : ComponentActivity() {
         setContent {
             NeuECodeTheme {
                 val state by controller.state.collectAsState()
+                val scope = rememberCoroutineScope()
                 var sms by remember { mutableStateOf("") }
+                var protocol by remember { mutableStateOf("-") }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -78,6 +90,8 @@ class DebugVpnProbeActivity : ComponentActivity() {
                     Text("user=${state.username ?: "none"}")
                     Text("challenge=${if (state.challenge != null) "yes" else "no"}")
                     Text("message=${state.message ?: "-"}")
+                    Spacer(Modifier.height(8.dp))
+                    Text("protocol=$protocol")
                     Spacer(Modifier.height(16.dp))
                     Button(
                         onClick = {
@@ -99,6 +113,45 @@ class DebugVpnProbeActivity : ComponentActivity() {
                         Text(
                             if (state.phase == StudentVpnPhase.Connected) "断开" else "连接学生 VPN",
                         )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            protocol = "paycode: fetching…"
+                            scope.launch {
+                                protocol = withContext(Dispatchers.IO) {
+                                    when (val result = payCodeRepository.fetchPayCode()) {
+                                        is PayCodeParseResult.Success ->
+                                            "paycode: OK len=${result.code.payload.length} ttl=${result.code.ttlSeconds}"
+                                        is PayCodeParseResult.Failure ->
+                                            "paycode: FAIL ${result.reason} ${result.message ?: ""}".trim()
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("实测取码")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            protocol = "schedule: fetching…"
+                            scope.launch {
+                                protocol = withContext(Dispatchers.IO) {
+                                    when (val result = scheduleRepository.loadMySchedule()) {
+                                        is Result.Success ->
+                                            "schedule: OK term=${result.data.term.code} courses=${result.data.summary.courseCount} events=${result.data.summary.eventCount}"
+                                        is Result.Error ->
+                                            "schedule: FAIL ${result.message ?: result.exception.message ?: "unknown"}"
+                                        Result.Loading -> "schedule: loading"
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("实测课表")
                     }
                     if (state.phase == StudentVpnPhase.NeedChallenge) {
                         Spacer(Modifier.height(12.dp))

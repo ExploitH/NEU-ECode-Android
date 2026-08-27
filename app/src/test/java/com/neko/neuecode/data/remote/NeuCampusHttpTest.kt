@@ -29,4 +29,24 @@ class NeuCampusHttpTest {
         assertTrue(NeuCampusHttp.looksLikeCampusTransport("timeout"))
         assertFalse(NeuCampusHttp.looksLikeCampusTransport("账号或密码错误"))
     }
+
+    @Test
+    fun casSsoSkip_jwxtHomeWithoutLoginForm_isAlreadyAuthenticated() {
+        assertTrue(
+            NeuCampusHttp.casAlreadyAuthenticated(
+                host = "jwxt.neu.edu.cn",
+                path = "/jwapp/sys/homeapp/index.do",
+                code = 200,
+                body = "<html><title>教务系统</title></html>",
+            ),
+        )
+        assertFalse(
+            NeuCampusHttp.casAlreadyAuthenticated(
+                host = "pass.neu.edu.cn",
+                path = "/tpass/login",
+                code = 200,
+                body = "<form id=\"loginForm\"></form>",
+            ),
+        )
+    }
 }

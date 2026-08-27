@@ -42,6 +42,17 @@ object NeuCampusHttp {
         )
     }
 
+    fun casAlreadyAuthenticated(host: String, path: String, code: Int, body: String): Boolean {
+        if (isEcodeIntermediateLanding(code, host)) return true
+        if (!host.endsWith("neu.edu.cn")) return false
+        val onLogin = host.equals("pass.neu.edu.cn", ignoreCase = true) &&
+            path.startsWith("/tpass/login")
+        if (onLogin) return false
+        val hasForm = body.contains("id=\"loginForm\"", ignoreCase = true) ||
+            body.contains("id='loginForm'", ignoreCase = true)
+        return !hasForm
+    }
+
     private fun containsAny(haystack: String, vararg needles: String): Boolean {
         return needles.any { haystack.contains(it, ignoreCase = true) }
     }

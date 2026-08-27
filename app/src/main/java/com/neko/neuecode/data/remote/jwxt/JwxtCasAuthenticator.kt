@@ -47,13 +47,26 @@ class JwxtCasAuthenticator(
                 .get()
                 .build()
         ).execute()
-        val pageUrl = page.request.url.toString()
+        val pageUrl = page.request.url
         val pageCode = page.code
         val pageBody = page.use { it.body?.string().orEmpty() }
+        if (NeuCampusHttp.casAlreadyAuthenticated(
+                host = pageUrl.host,
+                path = pageUrl.encodedPath,
+                code = pageCode,
+                body = pageBody,
+            )
+        ) {
+            return JwxtCasLoginResult(
+                ok = true,
+                account = username,
+                finalUrl = pageUrl.newBuilder().query(null).fragment(null).build().toString(),
+            )
+        }
         if (pageCode !in 200..299) {
             throw JwxtAuthenticationException("CAS login page failed: HTTP $pageCode")
         }
-        val scriptUrl = JwxtCasCrypto.extractLoginScriptUrl(pageBody, pageUrl)
+        val scriptUrl = JwxtCasCrypto.extractLoginScriptUrl(pageBody, pageUrl.toString())
             ?: throw JwxtAuthenticationException("CAS RSA public key is unavailable")
         val js = http.newCall(
             Request.Builder()
@@ -68,7 +81,7 @@ class JwxtCasAuthenticator(
         val publicKey = JwxtCasCrypto.extractPublicKeyFromJs(js)
         val submission = JwxtCasCrypto.buildLoginSubmission(
             pageHtml = pageBody,
-            pageUrl = pageUrl,
+            pageUrl = pageUrl.toString(),
             publicKeyB64 = publicKey,
             username = username,
             password = password
