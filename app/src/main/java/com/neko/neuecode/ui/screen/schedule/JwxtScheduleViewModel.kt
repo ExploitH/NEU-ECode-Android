@@ -58,6 +58,7 @@ class JwxtScheduleViewModel @Inject constructor(
                 _uiState.value.message
             },
         )
+        refresh()
     }
 
     fun refresh() {
@@ -116,8 +117,12 @@ class JwxtScheduleViewModel @Inject constructor(
 
     private fun inferWeek(document: JwxtScheduleDocument?, todayEpochDay: Long): Int {
         val weeks = document?.events.orEmpty().flatMap { it.weeks }
+        if (weeks.isEmpty()) return 1
+        val min = weeks.min()
+        val max = weeks.max()
         val guessed = ScheduleWeekClock.weekOf(termStartEpochDay = null, todayEpochDay = todayEpochDay)
-        return if (weeks.isEmpty()) guessed else guessed.coerceIn(weeks.min(), weeks.max())
+        val preferred = if (guessed in min..max) guessed else max
+        return preferred.coerceIn(min, max)
     }
 
     private fun looksLikeCampusFailure(message: String?): Boolean {

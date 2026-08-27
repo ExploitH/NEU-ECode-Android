@@ -166,6 +166,9 @@ dependencies {
     
     // Image Loading
     implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // QR encoding for protocol pay-code (Apache-2.0)
+    implementation("com.google.zxing:core:3.5.3")
     
     // Logging
     implementation("com.jakewharton.timber:timber:5.0.1")

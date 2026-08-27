@@ -56,7 +56,7 @@ Domain mapping for `PayCode`:
 
 | Field | Maps to |
 |---|---|
-| `data[0].attributes.qrCode` | `payload` (widget encode input; **do not draw on PayCodeScreen**) |
+| `data[0].attributes.qrCode` | `payload` (encode input for PayCodeScreen + widget) |
 | `data[0].attributes.qrInvalidTime` | `expiresAtEpochMs` (parse as Long) |
 | `ttlSeconds` | `max(0, (expiresAt - now) / 1000)` |
 | `createTime` | unused for domain, optional diagnostics |
@@ -66,8 +66,8 @@ If HTTP 401/403 or login HTML → `Unauthenticated` / `NeedRelogin`.
 If campus-net / VPN missing → `NeedCampusNet`.
 Empty / missing `qrCode` → `ProtocolError`.
 
-Main UI: protocol success still **must not** render a native QR. Payload is for
-the home-screen widget. Protocol failure → button「打开付款码」→ visible WebView.
+Main UI: protocol success **draws a centered scannable QR** on `PayCodeScreen`.
+Payload is also used by the home-screen widget. Protocol failure → button「打开付款码」→ visible WebView.
 
 ## Related read-only endpoints (same cookie)
 
@@ -84,6 +84,5 @@ Balances stay on 一号通 `items_app` / `detail_app`.
 
 ## Out of scope
 
-- Drawing ZXing/Compose QR on `PayCodeScreen`
 - Embedding WebView in the widget
 - Writing `qrCode` fixtures from live captures

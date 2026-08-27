@@ -13,6 +13,16 @@ class JwxtScheduleNormalizerTest {
     }
 
     @Test
+    fun expandWeeks_handlesLiveJwxtSpecs() {
+        assertEquals(
+            (1..9).toList() + (11..16).toList(),
+            JwxtScheduleNormalizer.expandWeeks("1-9周,11-16周[理论]/张川[主讲]"),
+        )
+        assertEquals(listOf(15, 16, 17, 18), JwxtScheduleNormalizer.expandWeeks("15-18周[理论]/姜博文[主讲]"))
+        assertEquals(listOf(3), JwxtScheduleNormalizer.expandWeeks("3周[]/"))
+    }
+
+    @Test
     fun expandWeeks_skipsEvenWeeksWhenOddOnly() {
         assertEquals(listOf(1, 3, 5), JwxtScheduleNormalizer.expandWeeks("1-5单周"))
     }

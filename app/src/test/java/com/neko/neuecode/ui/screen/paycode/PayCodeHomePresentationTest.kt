@@ -5,13 +5,14 @@ import com.neko.neuecode.domain.ecode.PayCodeFailure
 import com.neko.neuecode.domain.ecode.PayCodeParseResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PayCodeHomePresentationTest {
 
     @Test
-    fun protocolReady_doesNotShowNativeQrOrOpenButton() {
+    fun protocolReady_showsCenteredNativeQrWithoutOpenButton() {
         val state = PayCodeHomePresentation.from(
             PayCodeParseResult.Success(
                 PayCode(
@@ -23,7 +24,9 @@ class PayCodeHomePresentationTest {
         )
 
         assertEquals(PayCodeHomeStatus.Ready, state.status)
-        assertFalse(state.showNativeQr)
+        assertTrue(state.showNativeQr)
+        assertEquals("NEU-PAY-FIXTURE-001", state.payload)
+        assertEquals(90, state.ttlSeconds)
         assertFalse(state.showOpenPayCodeButton)
         assertEquals("打开付款码", PayCodeHomePresentation.OPEN_PAY_CODE_LABEL)
     }
@@ -46,6 +49,7 @@ class PayCodeHomePresentationTest {
             assertEquals(PayCodeHomeStatus.Failed, state.status)
             assertTrue(reason.name, state.showOpenPayCodeButton)
             assertFalse(reason.name, state.showNativeQr)
+            assertNull(reason.name, state.payload)
         }
     }
 
@@ -55,5 +59,6 @@ class PayCodeHomePresentationTest {
         assertEquals(PayCodeHomeStatus.Loading, state.status)
         assertFalse(state.showNativeQr)
         assertFalse(state.showOpenPayCodeButton)
+        assertNull(state.payload)
     }
 }
