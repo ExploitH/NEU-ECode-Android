@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
+import com.neko.neuecode.domain.jwxt.ScheduleLoginInitHint
 import com.neko.neuecode.ui.components.BrandLoadingMark
 import kotlinx.coroutines.launch
 
@@ -154,6 +155,14 @@ fun JwxtScheduleScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                     )
+                    if (state.showLoginInitHint) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = ScheduleLoginInitHint.TEXT,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             WeekChrome(
@@ -184,7 +193,10 @@ fun JwxtScheduleScreen(
             }
             if (state.loading && document == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    BrandLoadingMark(caption = state.message)
+                    BrandLoadingMark(
+                        caption = state.message,
+                        footnote = if (state.showLoginInitHint) ScheduleLoginInitHint.TEXT else null,
+                    )
                 }
             } else if (document == null) {
                 Text(

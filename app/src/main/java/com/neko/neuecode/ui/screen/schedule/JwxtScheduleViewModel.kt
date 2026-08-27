@@ -13,10 +13,13 @@ import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.SchedulePresentation
 import com.neko.neuecode.domain.jwxt.ScheduleTodayHighlight
 import com.neko.neuecode.domain.jwxt.ScheduleWeekClock
+import com.neko.neuecode.domain.jwxt.ScheduleLoginInitHint
 import com.neko.neuecode.domain.jwxt.ScheduleSyncProgress
 import com.neko.neuecode.domain.model.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -44,6 +47,8 @@ data class JwxtScheduleUiState(
     val showSettings: Boolean = false,
     val selectedDetail: CourseDetail? = null,
     val showIntranetHint: Boolean = false,
+    val syncStep: Int = 0,
+    val showLoginInitHint: Boolean = false,
 )
 
 @HiltViewModel
@@ -56,6 +61,8 @@ class JwxtScheduleViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(JwxtScheduleUiState())
     val uiState: StateFlow<JwxtScheduleUiState> = _uiState
+    private var loginInitHint = ScheduleLoginInitHint.State()
+    private var loginInitWatchJob: Job? = null
 
     init {
         val settings = settingsStore.load()
@@ -93,7 +100,7 @@ class JwxtScheduleViewModel @Inject constructor(
                 } else {
                     "未接入校园网（无法连接教务系统），已停止课表同步"
                 }
-                _uiState.value = _uiState.value.copy(
+                finishSyncProgress(
                     loading = false,
                     message = message,
                     showIntranetHint = true,
@@ -113,9 +120,11 @@ class JwxtScheduleViewModel @Inject constructor(
                     val weekday = ScheduleWeekClock.todayWeekday()
                     val actualWeek = actualWeekOf(_uiState.value.termStartEpochDay, today)
                     val week = (actualWeek ?: _uiState.value.selectedWeek).coerceIn(1, maxWeekOf(result.data))
-                    _uiState.value = _uiState.value.copy(
+                    finishSyncProgress(
                         loading = false,
                         message = "${result.data.term.name} · ${result.data.campus.name} · ${result.data.summary.courseCount} 门课",
+                    )
+                    _uiState.value = _uiState.value.copy(
                         document = result.data,
                         selectedTermCode = result.data.term.code,
                         selectedWeek = week,
@@ -128,7 +137,7 @@ class JwxtScheduleViewModel @Inject constructor(
                     loadTerms(result.data.term)
                 }
                 is Result.Error -> {
-                    _uiState.value = _uiState.value.copy(
+                    finishSyncProgress(
                         loading = false,
                         message = result.message ?: "课表同步失败",
                         showIntranetHint = looksLikeCampusFailure(result.message),
@@ -140,10 +149,47 @@ class JwxtScheduleViewModel @Inject constructor(
     }
 
     private fun publishProgress(progress: ScheduleSyncProgress) {
+        val wasWatching = loginInitHint.watchingLogin
+        loginInitHint = ScheduleLoginInitHint.onProgress(loginInitHint, progress.step)
+        if (loginInitHint.watchingLogin && !wasWatching && !loginInitHint.latched) {
+            loginInitWatchJob?.cancel()
+            loginInitWatchJob = viewModelScope.launch {
+                delay(ScheduleLoginInitHint.DELAY_MS)
+                loginInitHint = ScheduleLoginInitHint.onLoginWaitElapsed(
+                    loginInitHint,
+                    stillOnLoginStep = _uiState.value.syncStep == ScheduleLoginInitHint.LOGIN_STEP,
+                )
+                if (loginInitHint.latched && _uiState.value.loading) {
+                    _uiState.value = _uiState.value.copy(showLoginInitHint = true)
+                }
+            }
+        } else if (!loginInitHint.watchingLogin) {
+            loginInitWatchJob?.cancel()
+            loginInitWatchJob = null
+        }
         _uiState.value = _uiState.value.copy(
             loading = true,
             message = progress.line,
+            syncStep = progress.step,
             showIntranetHint = false,
+            showLoginInitHint = loginInitHint.latched,
+        )
+    }
+
+    private fun finishSyncProgress(
+        loading: Boolean,
+        message: String,
+        showIntranetHint: Boolean = false,
+    ) {
+        loginInitWatchJob?.cancel()
+        loginInitWatchJob = null
+        loginInitHint = ScheduleLoginInitHint.onFinished()
+        _uiState.value = _uiState.value.copy(
+            loading = loading,
+            message = message,
+            syncStep = 0,
+            showIntranetHint = showIntranetHint,
+            showLoginInitHint = false,
         )
     }
 

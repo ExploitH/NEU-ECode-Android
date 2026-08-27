@@ -6,6 +6,11 @@ import org.junit.Test
 class VpnStatusArtworkTest {
 
     @Test
+    fun connectingArtwork_isScaledToMatchIdleLogoController() {
+        assertEquals(0.64f, VpnStatusArtwork.CONNECTING_VISUAL_SCALE)
+    }
+
+    @Test
     fun connected_usesConnectedArtwork() {
         assertEquals(VpnStatusArtwork.Connected, VpnStatusArtwork.forPhase(StudentVpnPhase.Connected))
     }

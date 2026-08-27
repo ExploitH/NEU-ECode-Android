@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.airbnb.lottie.compose.LottieAnimation
@@ -46,10 +47,21 @@ fun VpnStatusMark(
                 VpnStatusArtwork.Connected -> connected
             }
             if (composition != null) {
+                val visualScale =
+                    if (target == VpnStatusArtwork.Connecting) {
+                        VpnStatusArtwork.CONNECTING_VISUAL_SCALE
+                    } else {
+                        1f
+                    }
                 LottieAnimation(
                     composition = composition,
                     iterations = LottieConstants.IterateForever,
-                    modifier = Modifier.size(size),
+                    modifier = Modifier
+                        .size(size)
+                        .graphicsLayer {
+                            scaleX = visualScale
+                            scaleY = visualScale
+                        },
                 )
             }
         }
