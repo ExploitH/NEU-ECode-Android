@@ -21,7 +21,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -136,13 +135,6 @@ fun IntranetVpnScreen(
                 ) {
                     Text("连接学生 VPN")
                 }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = viewModel::openInstalledClient,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("备用：打开已安装的 OpenVPN")
             }
         }
     }

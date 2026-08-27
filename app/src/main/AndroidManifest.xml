@@ -10,11 +10,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
 
-    <queries>
-        <package android:name="net.openvpn.openvpn" />
-        <package android:name="de.blinkt.openvpn" />
-    </queries>
-
     <application
         android:name=".NeuECodeApplication"
         android:allowBackup="false"
