@@ -17,7 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -35,6 +34,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.neko.neuecode.ui.components.BrandLoadingMark
 import com.neko.neuecode.ui.screen.ecode.BalanceHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,13 +91,7 @@ fun PayCodeScreen(
 
             when (state.home.status) {
                 PayCodeHomeStatus.Loading -> {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = state.home.syncHint ?: "正在同步付款码…",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    BrandLoadingMark(caption = state.home.syncHint ?: "正在同步付款码…")
                 }
                 PayCodeHomeStatus.Ready -> {
                     val payload = state.home.payload

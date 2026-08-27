@@ -167,6 +167,9 @@ dependencies {
     // Image Loading
     implementation("io.coil-kt:coil-compose:2.5.0")
 
+    // Brand loading mark (Apache-2.0)
+    implementation("com.airbnb.android:lottie-compose:6.4.1")
+
     // QR encoding for protocol pay-code (Apache-2.0)
     implementation("com.google.zxing:core:3.5.3")
     

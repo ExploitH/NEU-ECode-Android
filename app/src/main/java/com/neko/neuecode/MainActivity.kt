@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,6 +37,7 @@ import com.neko.neuecode.data.remote.update.AppUpdateRepository
 import com.neko.neuecode.data.remote.update.AppVersionInfo
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
+import com.neko.neuecode.ui.components.BrandLoadingMark
 import com.neko.neuecode.ui.screen.login.NativeLoginScreen
 import com.neko.neuecode.ui.theme.NeuECodeTheme
 import com.neko.neuecode.ui.update.AppUpdateDialog
@@ -318,13 +318,7 @@ fun LoadingScreen() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("加载中...")
-        }
+        BrandLoadingMark(caption = "加载中...")
     }
 }
 

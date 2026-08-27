@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF10B981),
+    primary = BrandColors.MountainRiverBlue,
     onPrimary = Color.White,
     secondary = Color(0xFF0EA5E9),
     onSecondary = Color.White,
@@ -17,7 +17,7 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF10B981),
+    primary = BrandColors.MountainRiverBlue,
     onPrimary = Color.White,
     secondary = Color(0xFF0EA5E9),
     onSecondary = Color.White,

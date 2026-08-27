@@ -7,6 +7,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.neko.neuecode.ui.components.BrandLoadingMark
 import com.neko.neuecode.ui.components.NeuWebView
 
 @Composable
@@ -21,16 +22,8 @@ fun ECodeScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         when (uiState) {
             is ECodeUiState.Loading -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("正在加载 e码通...")
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    BrandLoadingMark(caption = "正在加载 e码通...")
                 }
             }
             
