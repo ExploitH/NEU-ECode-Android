@@ -33,7 +33,6 @@ target_compile_definitions(ovpncli PRIVATE
     USE_ASIO
     USE_OPENSSL
     HAVE_LZ4
-    OPENVPN_FORCE_TUN_NULL=0
 )
 
 find_library(log-lib log)

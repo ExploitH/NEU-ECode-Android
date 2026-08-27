@@ -1,5 +1,6 @@
 package com.neko.neuecode.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -55,6 +56,7 @@ fun MainAppScreen(
     val showBottomBar = currentRoute == null || MainDestinations.isBottomBar(currentRoute)
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {

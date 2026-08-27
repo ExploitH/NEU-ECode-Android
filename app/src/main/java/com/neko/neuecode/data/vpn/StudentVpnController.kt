@@ -10,6 +10,7 @@ import com.neko.neuecode.domain.vpn.StudentVpnEvent
 import com.neko.neuecode.domain.vpn.StudentVpnReducer
 import com.neko.neuecode.domain.vpn.StudentVpnUiState
 import com.neko.neuecode.domain.vpn.StudentVpnProfileSanitizer
+import com.neko.neuecode.domain.vpn.StudentVpnUserMessage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -126,11 +127,7 @@ class StudentVpnController @Inject constructor(
     }
 
     private fun userSafeMessage(name: String, info: String): String {
-        return when {
-            name.equals("CORE_MISSING", ignoreCase = true) -> "官方 OpenVPN 3 核心未编入本构建"
-            info.contains("校园") || info.contains("network", ignoreCase = true) -> "网络不可达"
-            else -> "连接失败"
-        }
+        return StudentVpnUserMessage.from(name, info)
     }
 
     private fun publish(event: StudentVpnEvent) {
