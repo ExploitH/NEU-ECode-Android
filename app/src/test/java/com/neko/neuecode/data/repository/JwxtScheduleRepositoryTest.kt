@@ -70,7 +70,8 @@ class JwxtScheduleRepositoryTest {
                 credentialStore = store
             )
 
-            val result = repository.loadMySchedule()
+            val stages = mutableListOf<String>()
+            val result = repository.loadMySchedule { stages.add(it.line) }
 
             assertTrue(result is Result.Success)
             val document = (result as Result.Success).data
@@ -83,6 +84,17 @@ class JwxtScheduleRepositoryTest {
                 authenticator.login("20240001", "secret", JwxtScheduleClient.HOME_SERVICE)
             }
             assertEquals("/jwapp/sys/jwpubapp/modules/gg/cxmrxnxq.do", server.takeRequest().path)
+            assertEquals(
+                listOf(
+                    "2/7 正在登录教务…",
+                    "3/7 正在查询当前学期…",
+                    "4/7 正在查询上课校区…",
+                    "5/7 正在获取上课节次…",
+                    "6/7 正在下载课程明细…",
+                    "7/7 正在整理课表…",
+                ),
+                stages,
+            )
         }
     }
 }

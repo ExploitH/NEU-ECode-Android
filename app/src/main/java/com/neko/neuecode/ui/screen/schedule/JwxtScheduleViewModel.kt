@@ -13,6 +13,7 @@ import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.SchedulePresentation
 import com.neko.neuecode.domain.jwxt.ScheduleTodayHighlight
 import com.neko.neuecode.domain.jwxt.ScheduleWeekClock
+import com.neko.neuecode.domain.jwxt.ScheduleSyncProgress
 import com.neko.neuecode.domain.model.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -83,11 +84,7 @@ class JwxtScheduleViewModel @Inject constructor(
 
     fun refresh(termCode: String? = _uiState.value.selectedTermCode) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                loading = true,
-                message = "正在检测校园网（ping ipgw.neu.edu.cn）…",
-                showIntranetHint = false,
-            )
+            publishProgress(ScheduleSyncProgress.probing())
             val probe = withContext(Dispatchers.IO) { intranetProbe.probe() }
             if (probe.shouldAbortScheduleSync) {
                 val pingFailed = probe.host.contains("ipgw")
@@ -103,9 +100,11 @@ class JwxtScheduleViewModel @Inject constructor(
                 )
                 return@launch
             }
-            _uiState.value = _uiState.value.copy(message = "正在同步教务课表…")
             val result = withContext(Dispatchers.IO) {
-                repository.loadMySchedule(termCode = termCode)
+                repository.loadMySchedule(
+                    termCode = termCode,
+                    onProgress = { progress -> publishProgress(progress) },
+                )
             }
             when (result) {
                 is Result.Success -> {
@@ -135,9 +134,17 @@ class JwxtScheduleViewModel @Inject constructor(
                         showIntranetHint = looksLikeCampusFailure(result.message),
                     )
                 }
-                Result.Loading -> _uiState.value = _uiState.value.copy(loading = true, message = "正在同步教务课表…")
+                Result.Loading -> publishProgress(ScheduleSyncProgress.loggingIn())
             }
         }
+    }
+
+    private fun publishProgress(progress: ScheduleSyncProgress) {
+        _uiState.value = _uiState.value.copy(
+            loading = true,
+            message = progress.line,
+            showIntranetHint = false,
+        )
     }
 
     fun selectTerm(code: String) {

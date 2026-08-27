@@ -5,6 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
+import com.neko.neuecode.domain.jwxt.ScheduleSyncProgress
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -101,13 +102,16 @@ class JwxtScheduleClient(
     fun fetchBundle(
         termCode: String? = null,
         termName: String = "",
-        campusCode: String? = null
+        campusCode: String? = null,
+        onProgress: (ScheduleSyncProgress) -> Unit = {},
     ): JwxtScheduleBundle {
+        onProgress(ScheduleSyncProgress.currentTerm())
         val term = if (termCode.isNullOrBlank()) {
             getCurrentTerm()
         } else {
             JwxtNamedCode(termCode, termName)
         }
+        onProgress(ScheduleSyncProgress.campuses())
         val campuses = getCampuses(term.code)
         if (campuses.size() == 0) {
             throw JwxtProtocolException("JWXT returned no campus for term ${term.code}")
@@ -123,10 +127,13 @@ class JwxtScheduleClient(
             name = selected.stringOrEmpty("name")
         )
         if (campus.code.isBlank()) throw JwxtProtocolException("selected campus omitted its id")
+        onProgress(ScheduleSyncProgress.sections())
+        val sections = getSections(term.code, campus.code)
+        onProgress(ScheduleSyncProgress.details())
         return JwxtScheduleBundle(
             term = term,
             campus = campus,
-            sections = getSections(term.code, campus.code),
+            sections = sections,
             schedule = getSchedule(term.code, campus.code)
         )
     }
