@@ -4,6 +4,20 @@ object NeuCampusHttp {
     const val BROWSER_USER_AGENT =
         "Mozilla/5.0 (Linux; Android 13; Pixel 4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
+    const val ZHILIN_USER_AGENT = "ZhilinEai ZhilinNeuApp/3.1.1"
+
+    fun userAgentFor(host: String): String {
+        return if (host.equals("personal.neu.edu.cn", ignoreCase = true)) {
+            ZHILIN_USER_AGENT
+        } else {
+            BROWSER_USER_AGENT
+        }
+    }
+
+    fun shouldKeepExistingHeader(existing: String?): Boolean {
+        return !existing.isNullOrBlank()
+    }
+
     const val ECODE_SSO = "https://ecode.neu.edu.cn/ecode/api/sso/login"
     const val ECODE_HOME = "https://ecode.neu.edu.cn/ecode/"
 

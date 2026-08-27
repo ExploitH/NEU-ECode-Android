@@ -1,5 +1,6 @@
 package com.neko.neuecode.data.remote
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -48,5 +49,28 @@ class NeuCampusHttpTest {
                 body = "<form id=\"loginForm\"></form>",
             ),
         )
+    }
+
+    @Test
+    fun personalPortal_keepsZhilinUserAgent() {
+        assertEquals(
+            NeuCampusHttp.ZHILIN_USER_AGENT,
+            NeuCampusHttp.userAgentFor("personal.neu.edu.cn"),
+        )
+        assertEquals(
+            NeuCampusHttp.BROWSER_USER_AGENT,
+            NeuCampusHttp.userAgentFor("jwxt.neu.edu.cn"),
+        )
+        assertEquals(
+            NeuCampusHttp.BROWSER_USER_AGENT,
+            NeuCampusHttp.userAgentFor("ecode.neu.edu.cn"),
+        )
+    }
+
+    @Test
+    fun existingZhilinHeader_isNotOverwritten() {
+        assertTrue(NeuCampusHttp.shouldKeepExistingHeader(NeuCampusHttp.ZHILIN_USER_AGENT))
+        assertFalse(NeuCampusHttp.shouldKeepExistingHeader(null))
+        assertFalse(NeuCampusHttp.shouldKeepExistingHeader(""))
     }
 }

@@ -8,6 +8,8 @@ import com.neko.neuecode.data.remote.jwxt.JwxtScheduleClient
 import com.neko.neuecode.data.remote.jwxt.JwxtScheduleNormalizer
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.model.Result
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -31,39 +33,41 @@ class JwxtScheduleRepository @Inject constructor(
                 Exception("No saved credentials"),
                 "需要先开启长效登录，才能同步教务课表"
             )
-        return try {
-            authenticator.login(
-                username = credentials.username,
-                password = credentials.password,
-                service = JwxtScheduleClient.HOME_SERVICE
-            )
-            val bundle = client.fetchBundle(
-                termCode = termCode,
-                campusCode = campusCode
-            )
-            val document = JwxtScheduleNormalizer.normalize(
-                account = credentials.username,
-                termCode = bundle.term.code,
-                termName = bundle.term.name,
-                campusCode = bundle.campus.code,
-                campusName = bundle.campus.name,
-                sections = bundle.sections,
-                schedule = bundle.schedule,
-                generatedAt = utcNow()
-            )
-            Result.Success(document)
-        } catch (e: JwxtHumanVerificationRequired) {
-            Timber.w(e, "JWXT CAS requires human verification")
-            Result.Error(e, "教务登录需要短信/验证码，请稍后在网页完成验证后再试")
-        } catch (e: Exception) {
-            Timber.e(e, "JWXT schedule sync failed")
-            val message = e.message.orEmpty()
-            val userMessage = if (NeuCampusHttp.looksLikeCampusTransport(message)) {
-                "课表同步超时或网关 502，请确认内网连接后重试"
-            } else {
-                e.message ?: "课表同步失败"
+        return withContext(Dispatchers.IO) {
+            try {
+                authenticator.login(
+                    username = credentials.username,
+                    password = credentials.password,
+                    service = JwxtScheduleClient.HOME_SERVICE
+                )
+                val bundle = client.fetchBundle(
+                    termCode = termCode,
+                    campusCode = campusCode
+                )
+                val document = JwxtScheduleNormalizer.normalize(
+                    account = credentials.username,
+                    termCode = bundle.term.code,
+                    termName = bundle.term.name,
+                    campusCode = bundle.campus.code,
+                    campusName = bundle.campus.name,
+                    sections = bundle.sections,
+                    schedule = bundle.schedule,
+                    generatedAt = utcNow()
+                )
+                Result.Success(document)
+            } catch (e: JwxtHumanVerificationRequired) {
+                Timber.w(e, "JWXT CAS requires human verification")
+                Result.Error(e, "教务登录需要短信/验证码，请稍后在网页完成验证后再试")
+            } catch (e: Exception) {
+                Timber.e(e, "JWXT schedule sync failed")
+                val message = e.message.orEmpty()
+                val userMessage = if (NeuCampusHttp.looksLikeCampusTransport(message)) {
+                    "课表同步超时或网关 502，请确认内网连接后重试"
+                } else {
+                    e.message ?: "课表同步失败"
+                }
+                Result.Error(e, userMessage)
             }
-            Result.Error(e, userMessage)
         }
     }
 

@@ -78,11 +78,15 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .cookieJar(cookieJar)
             .addInterceptor { chain ->
-                val request = chain.request().newBuilder()
-                    .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
-                    .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-                    .build()
-                chain.proceed(request)
+                val original = chain.request()
+                val builder = original.newBuilder()
+                if (!NeuCampusHttp.shouldKeepExistingHeader(original.header("User-Agent"))) {
+                    builder.header("User-Agent", NeuCampusHttp.userAgentFor(original.url.host))
+                }
+                if (!NeuCampusHttp.shouldKeepExistingHeader(original.header("Accept-Language"))) {
+                    builder.header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                }
+                chain.proceed(builder.build())
             }
             .addInterceptor(metadataInterceptor)
             .addInterceptor(loggingInterceptor)

@@ -9,6 +9,8 @@ import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
 import com.neko.neuecode.data.remote.jwxt.JwxtHumanVerificationRequired
 import com.neko.neuecode.domain.ecode.PayCodeFailure
 import com.neko.neuecode.domain.ecode.PayCodeParseResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
@@ -28,23 +30,25 @@ class ECodePayCodeRepository @Inject constructor(
                 PayCodeFailure.Unauthenticated,
                 "需要先开启长效登录，才能同步付款码",
             )
-        return try {
-            authenticator.login(
-                username = credentials.username,
-                password = credentials.password,
-                service = NeuCampusHttp.ECODE_SSO,
-            )
-            warmupEcodeSession()
-            fetchQrWithRetry(nowEpochMs)
-        } catch (e: JwxtHumanVerificationRequired) {
-            Timber.w(e, "eCode CAS requires human verification")
-            PayCodeParseResult.Failure(
-                PayCodeFailure.NeedRelogin,
-                "付款码登录需要短信/验证码，请稍后在网页完成验证后再试",
-            )
-        } catch (e: Exception) {
-            Timber.w(e, "eCode pay-code fetch failed")
-            classifyNetworkFailure(e)
+        return withContext(Dispatchers.IO) {
+            try {
+                authenticator.login(
+                    username = credentials.username,
+                    password = credentials.password,
+                    service = NeuCampusHttp.ECODE_SSO,
+                )
+                warmupEcodeSession()
+                fetchQrWithRetry(nowEpochMs)
+            } catch (e: JwxtHumanVerificationRequired) {
+                Timber.w(e, "eCode CAS requires human verification")
+                PayCodeParseResult.Failure(
+                    PayCodeFailure.NeedRelogin,
+                    "付款码登录需要短信/验证码，请稍后在网页完成验证后再试",
+                )
+            } catch (e: Exception) {
+                Timber.w(e, "eCode pay-code fetch failed")
+                classifyNetworkFailure(e)
+            }
         }
     }
 
