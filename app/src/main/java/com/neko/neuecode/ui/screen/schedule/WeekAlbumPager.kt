@@ -10,16 +10,17 @@ import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.ScheduleGridCell
-import com.neko.neuecode.domain.jwxt.SchedulePresentation
 import com.neko.neuecode.domain.jwxt.ScheduleTodayHighlight
 import kotlinx.coroutines.flow.distinctUntilChanged
+
+/** Compose current week plus one neighbour on each side. */
+const val WEEK_PAGER_PREFETCH = 1
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -36,9 +37,6 @@ fun WeekAlbumPager(
     modifier: Modifier = Modifier,
 ) {
     val pages = maxWeek.coerceAtLeast(1)
-    val cellsByWeek = remember(document, pages) {
-        SchedulePresentation.cellsByWeek(document, pages)
-    }
     LaunchedEffect(selectedWeek, pages) {
         val target = WeekPagerIndex.pageOf(selectedWeek, pages)
         if (!pagerState.isScrollInProgress && pagerState.currentPage != target) {
@@ -54,15 +52,15 @@ fun WeekAlbumPager(
     }
     HorizontalPager(
         state = pagerState,
-        beyondBoundsPageCount = pages,
+        beyondBoundsPageCount = WEEK_PAGER_PREFETCH,
         pageSpacing = 8.dp,
         flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
         modifier = modifier.graphicsLayer { translationX = bouncePx },
     ) { page ->
         val week = WeekPagerIndex.weekOf(page, pages)
         WeekGridPane(
-            cells = cellsByWeek.getOrElse(page) { emptyList() },
-            sections = document.sections,
+            document = document,
+            week = week,
             todayWeekday = ScheduleTodayHighlight.weekdayToMark(
                 selectedWeek = week,
                 actualWeek = actualWeek,

@@ -35,7 +35,21 @@ data class CourseDetail(
 
 object SchedulePresentation {
     fun cellsForWeek(document: JwxtScheduleDocument, week: Int): List<ScheduleGridCell> {
-        return cellsByWeek(document, week.coerceAtLeast(1)).getOrElse(week - 1) { emptyList() }
+        val target = week.coerceAtLeast(1)
+        return document.events
+            .filter { target in it.weeks }
+            .sortedWith(compareBy({ it.weekday }, { it.sections.start }))
+            .map { event ->
+                ScheduleGridCell(
+                    weekday = event.weekday,
+                    startSection = event.sections.start,
+                    endSection = event.sections.end,
+                    courseName = event.courseName,
+                    classroom = event.classroom,
+                    courseKey = courseKey(event),
+                    eventId = event.id,
+                )
+            }
     }
 
     fun cellsByWeek(document: JwxtScheduleDocument, maxWeek: Int): List<List<ScheduleGridCell>> {
