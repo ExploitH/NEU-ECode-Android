@@ -29,6 +29,15 @@ object NeuCampusHttp {
         return code == 502 || code == 503 || code == 504
     }
 
+    fun isRetryableJwxtModule(code: Int): Boolean {
+        return code == 403 || isRetryableGateway(code)
+    }
+
+    fun isRetryableJwxtModuleStatus(error: Throwable): Boolean {
+        val message = error.message.orEmpty()
+        return message.contains("HTTP 403") || isRetryableGatewayStatus(error)
+    }
+
     fun isRetryableGatewayStatus(error: Throwable): Boolean {
         val message = error.message.orEmpty()
         return looksLikeCampusTransport(message) &&

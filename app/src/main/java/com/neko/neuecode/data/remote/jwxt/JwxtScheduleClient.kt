@@ -5,6 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
+import com.neko.neuecode.domain.jwxt.ScheduleSyncProgress
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,7 +28,13 @@ class JwxtScheduleClient(
         const val DEFAULT_BASE_URL = "https://jwxt.neu.edu.cn"
         const val HOME_SERVICE = "https://jwxt.neu.edu.cn/jwapp/sys/homeapp/index.do"
         const val SCHEDULE_REFERER = "https://jwxt.neu.edu.cn/jwapp/sys/kbapp/*default/index.do#/wdkb"
+        const val KBAPP_INDEX_PATH = "/jwapp/sys/kbapp/*default/index.do"
     }
+
+    private val followHttp: OkHttpClient = http.newBuilder()
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .build()
 
     fun getCurrentTerm(): JwxtNamedCode {
         val model = postModel(
@@ -60,6 +67,7 @@ class JwxtScheduleClient(
     }
 
     fun getCampuses(termCode: String): JsonArray {
+        warmupKbappSession()
         val model = postModel(
             "/jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do",
             mapOf("XNXQDM" to termCode),
@@ -94,13 +102,16 @@ class JwxtScheduleClient(
     fun fetchBundle(
         termCode: String? = null,
         termName: String = "",
-        campusCode: String? = null
+        campusCode: String? = null,
+        onProgress: (ScheduleSyncProgress) -> Unit = {},
     ): JwxtScheduleBundle {
+        onProgress(ScheduleSyncProgress.currentTerm())
         val term = if (termCode.isNullOrBlank()) {
             getCurrentTerm()
         } else {
             JwxtNamedCode(termCode, termName)
         }
+        onProgress(ScheduleSyncProgress.campuses())
         val campuses = getCampuses(term.code)
         if (campuses.size() == 0) {
             throw JwxtProtocolException("JWXT returned no campus for term ${term.code}")
@@ -116,10 +127,13 @@ class JwxtScheduleClient(
             name = selected.stringOrEmpty("name")
         )
         if (campus.code.isBlank()) throw JwxtProtocolException("selected campus omitted its id")
+        onProgress(ScheduleSyncProgress.sections())
+        val sections = getSections(term.code, campus.code)
+        onProgress(ScheduleSyncProgress.details())
         return JwxtScheduleBundle(
             term = term,
             campus = campus,
-            sections = getSections(term.code, campus.code),
+            sections = sections,
             schedule = getSchedule(term.code, campus.code)
         )
     }
@@ -131,13 +145,31 @@ class JwxtScheduleClient(
                 return postModelOnce(path, fields, model)
             } catch (error: JwxtProtocolException) {
                 lastError = error
-                if (!NeuCampusHttp.isRetryableGatewayStatus(error) && !NeuCampusHttp.looksLikeCampusTransport(error.message.orEmpty())) {
+                if (!NeuCampusHttp.isRetryableJwxtModuleStatus(error) &&
+                    !NeuCampusHttp.looksLikeCampusTransport(error.message.orEmpty())
+                ) {
                     throw error
                 }
                 if (attempt == 2) throw error
+                if (error.message.orEmpty().contains("HTTP 403")) {
+                    warmupKbappSession()
+                }
             }
         }
         throw lastError ?: JwxtProtocolException("JWXT model $model failed")
+    }
+
+    private fun warmupKbappSession() {
+        val request = Request.Builder()
+            .url(baseUrl.trimEnd('/') + KBAPP_INDEX_PATH)
+            .get()
+            .header("Accept", "text/html,application/xhtml+xml")
+            .header("Referer", HOME_SERVICE)
+            .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
+            .build()
+        runCatching {
+            followHttp.newCall(request).execute().use { it.body?.string() }
+        }
     }
 
     private fun postModelOnce(path: String, fields: Map<String, String>, model: String): com.google.gson.JsonElement {
@@ -153,7 +185,7 @@ class JwxtScheduleClient(
             .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
             .build()
         http.newCall(request).execute().use { response ->
-            if (NeuCampusHttp.isRetryableGateway(response.code)) {
+            if (NeuCampusHttp.isRetryableJwxtModule(response.code)) {
                 throw JwxtProtocolException("JWXT model $model failed: HTTP ${response.code}")
             }
             if (!response.isSuccessful) {

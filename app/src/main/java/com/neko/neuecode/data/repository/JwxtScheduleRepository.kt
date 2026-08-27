@@ -9,6 +9,7 @@ import com.neko.neuecode.data.remote.jwxt.JwxtScheduleNormalizer
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.JwxtTermCatalog
+import com.neko.neuecode.domain.jwxt.ScheduleSyncProgress
 import com.neko.neuecode.domain.model.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,7 +29,8 @@ class JwxtScheduleRepository @Inject constructor(
 ) {
     suspend fun loadMySchedule(
         termCode: String? = null,
-        campusCode: String? = null
+        campusCode: String? = null,
+        onProgress: (ScheduleSyncProgress) -> Unit = {},
     ): Result<JwxtScheduleDocument> {
         val credentials = credentialStore.load()
             ?: return Result.Error(
@@ -37,15 +39,21 @@ class JwxtScheduleRepository @Inject constructor(
             )
         return withContext(Dispatchers.IO) {
             try {
+                val started = System.nanoTime()
+                onProgress(ScheduleSyncProgress.loggingIn())
                 authenticator.login(
                     username = credentials.username,
                     password = credentials.password,
                     service = JwxtScheduleClient.HOME_SERVICE
                 )
+                val afterLogin = System.nanoTime()
                 val bundle = client.fetchBundle(
                     termCode = termCode,
-                    campusCode = campusCode
+                    campusCode = campusCode,
+                    onProgress = onProgress,
                 )
+                val afterFetch = System.nanoTime()
+                onProgress(ScheduleSyncProgress.arranging())
                 val document = JwxtScheduleNormalizer.normalize(
                     account = credentials.username,
                     termCode = bundle.term.code,
@@ -55,6 +63,14 @@ class JwxtScheduleRepository @Inject constructor(
                     sections = bundle.sections,
                     schedule = bundle.schedule,
                     generatedAt = utcNow()
+                )
+                val afterNormalize = System.nanoTime()
+                Timber.i(
+                    "JWXT schedule timings login=%dms fetch=%dms normalize=%dms events=%d",
+                    (afterLogin - started) / 1_000_000,
+                    (afterFetch - afterLogin) / 1_000_000,
+                    (afterNormalize - afterFetch) / 1_000_000,
+                    document.summary.eventCount,
                 )
                 Result.Success(document)
             } catch (e: JwxtHumanVerificationRequired) {

@@ -21,6 +21,9 @@ class NeuCampusHttpTest {
         assertTrue(NeuCampusHttp.isRetryableGateway(504))
         assertFalse(NeuCampusHttp.isRetryableGateway(200))
         assertFalse(NeuCampusHttp.isRetryableGateway(401))
+        assertTrue(NeuCampusHttp.isRetryableJwxtModule(403))
+        assertTrue(NeuCampusHttp.isRetryableJwxtModule(502))
+        assertFalse(NeuCampusHttp.isRetryableJwxtModule(401))
     }
 
     @Test

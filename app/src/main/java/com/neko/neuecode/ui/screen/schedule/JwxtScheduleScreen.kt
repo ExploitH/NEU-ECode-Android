@@ -41,12 +41,12 @@ import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -72,6 +72,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
+import com.neko.neuecode.domain.jwxt.ScheduleLoginInitHint
+import com.neko.neuecode.ui.components.BrandLoadingMark
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -140,6 +142,29 @@ fun JwxtScheduleScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
+            if (state.loading) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                    if (state.showLoginInitHint) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = ScheduleLoginInitHint.TEXT,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
             WeekChrome(
                 selectedWeek = state.selectedWeek,
                 maxWeek = maxWeek,
@@ -168,7 +193,10 @@ fun JwxtScheduleScreen(
             }
             if (state.loading && document == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    BrandLoadingMark(
+                        caption = state.message,
+                        footnote = if (state.showLoginInitHint) ScheduleLoginInitHint.TEXT else null,
+                    )
                 }
             } else if (document == null) {
                 Text(
@@ -203,9 +231,13 @@ fun JwxtScheduleScreen(
                                 actualWeek = state.actualWeek,
                                 selectedWeek = state.selectedWeek,
                             )
-                            if (todayWeek == null) {
+                            val unavailable = com.neko.neuecode.domain.jwxt.ScheduleTodayCopy.todayUnavailableMessage(
+                                termStartEpochDay = state.termStartEpochDay,
+                                actualWeek = state.actualWeek,
+                            )
+                            if (todayWeek == null || unavailable != null) {
                                 Text(
-                                    text = "请先在「课表设定」填写学期开始日期，才能确定今天是第几周。",
+                                    text = unavailable ?: com.neko.neuecode.domain.jwxt.ScheduleTodayCopy.MISSING_TERM_START,
                                     color = colors.onSurfaceVariant,
                                     modifier = Modifier.padding(16.dp),
                                 )
