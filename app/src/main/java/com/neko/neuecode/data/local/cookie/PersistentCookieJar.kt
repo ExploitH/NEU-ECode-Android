@@ -62,11 +62,10 @@ class PersistentCookieJar @Inject constructor(
         synchronized(storeLock) {
             val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
             synchronized(domainCookies) {
-                serializedCookies.forEach { newCookie ->
-                    domainCookies.removeIf { it.name == newCookie.name }
-                }
-                domainCookies.addAll(serializedCookies)
-                domainCookies.removeIf { it.isExpired() }
+                val updated = CookieMerge.upsert(domainCookies, serializedCookies)
+                    .filterNot { it.isExpired() }
+                domainCookies.clear()
+                domainCookies.addAll(updated)
             }
         }
         
@@ -83,14 +82,13 @@ class PersistentCookieJar @Inject constructor(
     
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         val matchingCookies = mutableListOf<Cookie>()
-        val urlString = url.toString()
         
         // Check all domains for matching cookies
         cookieStore.forEach { (_, cookies) ->
             synchronized(cookies) {
                 cookies.forEach { serializableCookie ->
-                    if (serializableCookie.matches(urlString)) {
-                        serializableCookie.toOkHttpCookie()?.let { cookie ->
+                    serializableCookie.toOkHttpCookie()?.let { cookie ->
+                        if (cookie.matches(url)) {
                             matchingCookies.add(cookie)
                         }
                     }
@@ -99,7 +97,12 @@ class PersistentCookieJar @Inject constructor(
         }
         
         if (matchingCookies.isNotEmpty()) {
-            Timber.d("Loaded ${matchingCookies.size} cookies for request: ${url.host}")
+            Timber.d(
+                "Loaded %s cookies for request: %s names=%s",
+                matchingCookies.size,
+                url.host,
+                matchingCookies.joinToString(",") { "${it.name}@${it.path}" },
+            )
         }
         
         return matchingCookies
@@ -267,8 +270,9 @@ class PersistentCookieJar @Inject constructor(
 
         val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
         synchronized(domainCookies) {
-            domainCookies.removeIf { it.name == cookie.name }
-            domainCookies.add(cookie)
+            val updated = CookieMerge.upsert(domainCookies, listOf(cookie))
+            domainCookies.clear()
+            domainCookies.addAll(updated)
         }
 
         syncToWebView(url, listOf(cookie))
@@ -326,10 +330,9 @@ class PersistentCookieJar @Inject constructor(
         imported.groupBy { it.domain }.forEach { (domain, cookies) ->
             val domainCookies = cookieStore.getOrPut(domain) { mutableSetOf() }
             synchronized(domainCookies) {
-                cookies.forEach { newCookie ->
-                    domainCookies.removeIf { it.name == newCookie.name }
-                }
-                domainCookies.addAll(cookies)
+                val updated = CookieMerge.upsert(domainCookies, cookies)
+                domainCookies.clear()
+                domainCookies.addAll(updated)
             }
         }
 

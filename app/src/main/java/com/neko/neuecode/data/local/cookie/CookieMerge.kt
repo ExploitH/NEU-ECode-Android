@@ -22,4 +22,18 @@ object CookieMerge {
         }
         return merged.values.toList()
     }
+
+    fun upsert(
+        existing: Collection<SerializableCookie>,
+        incoming: Collection<SerializableCookie>,
+    ): List<SerializableCookie> {
+        val merged = LinkedHashMap<String, SerializableCookie>()
+        existing.forEach { cookie ->
+            merged[keyOf(cookie)] = cookie
+        }
+        incoming.forEach { cookie ->
+            merged[keyOf(cookie)] = cookie
+        }
+        return merged.values.toList()
+    }
 }

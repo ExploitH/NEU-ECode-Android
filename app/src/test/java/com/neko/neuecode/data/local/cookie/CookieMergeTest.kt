@@ -37,4 +37,35 @@ class CookieMergeTest {
         assertTrue(merged.any { it.name == "SESSION" && it.value == "live" })
         assertTrue(merged.any { it.name == "CASTGC" && it.value == "tgt" })
     }
+
+    @Test
+    fun sameNameDifferentPath_areDifferentCookies() {
+        val root = SerializableCookie(
+            name = "SESSION",
+            value = "root-session",
+            domain = "jwxt.neu.edu.cn",
+            path = "/",
+            hostOnly = true,
+        )
+        val module = SerializableCookie(
+            name = "SESSION",
+            value = "jwpubapp-session",
+            domain = "jwxt.neu.edu.cn",
+            path = "/jwapp/sys/jwpubapp/",
+            hostOnly = true,
+        )
+        val stored = CookieMerge.upsert(existing = listOf(root), incoming = listOf(module))
+        assertEquals(2, stored.size)
+        assertEquals("root-session", stored.single { it.path == "/" }.value)
+        assertEquals("jwpubapp-session", stored.single { it.path == "/jwapp/sys/jwpubapp/" }.value)
+    }
+
+    @Test
+    fun sameNameSamePath_replacesValue() {
+        val old = SerializableCookie(name = "SESSION", value = "old", domain = "jwxt.neu.edu.cn", path = "/")
+        val fresh = SerializableCookie(name = "SESSION", value = "fresh", domain = "jwxt.neu.edu.cn", path = "/")
+        val stored = CookieMerge.upsert(existing = listOf(old), incoming = listOf(fresh))
+        assertEquals(1, stored.size)
+        assertEquals("fresh", stored.single().value)
+    }
 }
