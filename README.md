@@ -1,6 +1,6 @@
 # 东大码 Android
 
-[English](README.en.md) · [最新发行版](https://github.com/ExploitH/NEU-ECode-Android/releases/latest) · [许可证](LICENSE)
+[English](README.en.md) · [GitHub](https://github.com/ExploitH/NEU-ECode-Android) · [Gitee 镜像](https://gitee.com/exploith/neu-ecode) · [最新发行版](https://gitee.com/exploith/neu-ecode/releases) · [许可证](LICENSE)
 
 **东北大学校园生活的原生伴侣。**  
 东大码 Android 以 Kotlin、Jetpack Compose 与 Material 3 重新编排付款码、课表与校园内网入口，让日常校园事务回到一台干净、克制、可审计的客户端里。
@@ -178,6 +178,8 @@ Android 侧流程见 [docs/CLIENT_UPDATE_FLOW.md](docs/CLIENT_UPDATE_FLOW.md)。
 |---|---|---|
 | 6.0 | 67 | 应用内 OpenVPN 3、协议取码大码、Sleepy 风格课表 |
 | **7.0** | **68** | 首次同步 403 修复、同步进度、VPN 三态 Lottie、山川主题、按周动态翻页 |
+
+大陆访问优先走 [Gitee 镜像](https://gitee.com/exploith/neu-ecode)。GitHub 仍是主仓：`ExploitH/NEU-ECode-Android`。
 
 ---
 

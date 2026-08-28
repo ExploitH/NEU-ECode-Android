@@ -1,6 +1,6 @@
 # NEU eCode Android
 
-[中文](README.md) · [Latest release](https://github.com/ExploitH/NEU-ECode-Android/releases/latest) · [License](LICENSE)
+[中文](README.md) · [GitHub](https://github.com/ExploitH/NEU-ECode-Android) · [Gitee mirror](https://gitee.com/exploith/neu-ecode) · [Latest release](https://gitee.com/exploith/neu-ecode/releases) · [License](LICENSE)
 
 **A native companion for campus life at Northeastern University.**  
 NEU eCode Android re-stages pay-code, timetable, and campus-intranet access in Kotlin, Jetpack Compose, and Material 3 — a clean, restrained, auditable client for everyday campus work.
@@ -178,6 +178,8 @@ Current release line:
 |---|---|---|
 | 6.0 | 67 | In-app OpenVPN 3, protocol pay-code, Sleepy-style timetable |
 | **7.0** | **68** | First-sync 403 fix, named sync progress, VPN Lottie triad, Mountain & River branding, per-week paging |
+
+Mainland access should prefer the [Gitee mirror](https://gitee.com/exploith/neu-ecode). GitHub remains the primary repository: `ExploitH/NEU-ECode-Android`.
 
 ---
 
