@@ -24,6 +24,9 @@ class ECodePayCodeRepository @Inject constructor(
     private val credentialStore: SecureCredentialStore,
     private val http: OkHttpClient,
 ) {
+    @Volatile
+    private var smsChallengePending = false
+
     suspend fun fetchPayCode(nowEpochMs: Long = System.currentTimeMillis()): PayCodeParseResult {
         val credentials = credentialStore.load()
             ?: return PayCodeParseResult.Failure(
@@ -31,6 +34,9 @@ class ECodePayCodeRepository @Inject constructor(
                 "需要先开启长效登录，才能同步付款码",
             )
         return withContext(Dispatchers.IO) {
+            if (smsChallengePending) {
+                return@withContext smsChallengeFailure()
+            }
             try {
                 authenticator.login(
                     username = credentials.username,
@@ -38,18 +44,31 @@ class ECodePayCodeRepository @Inject constructor(
                     service = NeuCampusHttp.ECODE_SSO,
                 )
                 warmupEcodeSession()
-                fetchQrWithRetry(nowEpochMs)
+                fetchQrWithRetry(nowEpochMs).also { result ->
+                    if (result is PayCodeParseResult.Success) {
+                        smsChallengePending = false
+                    }
+                }
             } catch (e: JwxtHumanVerificationRequired) {
                 Timber.w(e, "eCode CAS requires human verification")
-                PayCodeParseResult.Failure(
-                    PayCodeFailure.NeedRelogin,
-                    "付款码登录需要短信/验证码，请稍后在网页完成验证后再试",
-                )
+                smsChallengePending = true
+                smsChallengeFailure()
             } catch (e: Exception) {
                 Timber.w(e, "eCode pay-code fetch failed")
                 classifyNetworkFailure(e)
             }
         }
+    }
+
+    fun clearSmsChallenge() {
+        smsChallengePending = false
+    }
+
+    private fun smsChallengeFailure(): PayCodeParseResult.Failure {
+        return PayCodeParseResult.Failure(
+            PayCodeFailure.NeedSms,
+            "付款码登录需要短信验证码。请先完成短信验证，验证完成前请不要反复点刷新，以免重复发送短信。",
+        )
     }
 
     private fun warmupEcodeSession() {

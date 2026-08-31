@@ -13,6 +13,13 @@ data class JwxtCasSubmission(
 )
 
 object JwxtCasCrypto {
+    private val VISIBLE_SMS_MARKERS = listOf(
+        "登录码已发送",
+        "输入验证码",
+        "手机验证码",
+        "动态验证码",
+        "二次认证",
+    )
     private val inputPattern = Pattern.compile(
         "<input\\b[^>]*>",
         Pattern.CASE_INSENSITIVE
@@ -58,9 +65,14 @@ object JwxtCasCrypto {
     }
 
     fun extractPublicKeyFromJs(js: String): String {
-        val match = Regex("""publicKeyStr\s*=\s*"([A-Za-z0-9+/=]+)"""").find(js)
-            ?: throw JwxtProtocolException("CAS RSA public key is unavailable")
+        val match = Regex(
+            """(?:const|let|var)?\s*publicKeyStr\s*=\s*["']([A-Za-z0-9+/=]+)["']""",
+        ).find(js) ?: throw JwxtProtocolException("CAS RSA public key is unavailable")
         return match.groupValues[1]
+    }
+
+    fun looksLikeSmsChallenge(html: String): Boolean {
+        return VISIBLE_SMS_MARKERS.any { html.contains(it) }
     }
 
     fun extractLoginScriptUrl(pageHtml: String, pageUrl: String): String? {

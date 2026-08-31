@@ -16,6 +16,7 @@ enum class PayCodeFailure {
     Unauthenticated,
     NeedCampusNet,
     NeedRelogin,
+    NeedSms,
     ProtocolError,
     Unknown,
 }

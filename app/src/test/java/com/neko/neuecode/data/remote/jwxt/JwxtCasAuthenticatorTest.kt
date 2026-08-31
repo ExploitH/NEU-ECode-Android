@@ -8,6 +8,10 @@ import java.security.KeyPairGenerator
 import java.security.interfaces.RSAPrivateKey
 import java.util.Base64
 import javax.crypto.Cipher
+import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import org.junit.Assert.fail
 
 class JwxtCasAuthenticatorTest {
 
@@ -61,5 +65,55 @@ class JwxtCasAuthenticatorTest {
         assertEquals("8", submission.fields["ul"])
         assertEquals("6", submission.fields["pl"])
         assertTrue(submission.fields["rsa"].orEmpty().isNotBlank())
+    }
+
+    @Test
+    fun login_smsChallengePage_throwsHumanVerificationInsteadOfMissingKey() {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setBody(
+                    """
+                    <html><body>
+                      <div>二次认证</div>
+                      <p>登录码已发送，请输入验证码</p>
+                      <input id="mcode" />
+                    </body></html>
+                    """.trimIndent(),
+                ),
+            )
+            val authenticator = JwxtCasAuthenticator(
+                sharedHttp = OkHttpClient(),
+                loginEndpoint = server.url("/tpass/login").toString(),
+            )
+            try {
+                authenticator.login("20240001", "secret", "https://ecode.neu.edu.cn/ecode/api/sso/login")
+                fail("expected SMS challenge")
+            } catch (e: JwxtHumanVerificationRequired) {
+                assertTrue(e.message.orEmpty().contains("SMS"))
+            }
+            assertEquals(1, server.requestCount)
+        }
+    }
+
+    @Test
+    fun login_passwordPageWithoutScript_stillReportsMissingKey() {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setBody(
+                    """<html><body><form id="loginForm"><input id="un"/><input id="pd"/></form></body></html>""",
+                ),
+            )
+            val authenticator = JwxtCasAuthenticator(
+                sharedHttp = OkHttpClient(),
+                loginEndpoint = server.url("/tpass/login").toString(),
+            )
+            try {
+                authenticator.login("20240001", "secret", "https://ecode.neu.edu.cn/ecode/api/sso/login")
+                fail("expected missing RSA key")
+            } catch (e: JwxtAuthenticationException) {
+                assertFalse(e is JwxtHumanVerificationRequired)
+                assertTrue(e.message.orEmpty().contains("RSA public key is unavailable"))
+            }
+        }
     }
 }

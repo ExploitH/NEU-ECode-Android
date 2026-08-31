@@ -1,6 +1,7 @@
 package com.neko.neuecode.ui.screen.paycode
 
 import com.neko.neuecode.domain.ecode.PayCode
+import com.neko.neuecode.domain.ecode.PayCodeFailure
 import com.neko.neuecode.domain.ecode.PayCodeParseResult
 
 enum class PayCodeHomeStatus {
@@ -44,7 +45,7 @@ object PayCodeHomePresentation {
             )
             is PayCodeParseResult.Failure -> PayCodeHomeState(
                 status = PayCodeHomeStatus.Failed,
-                showOpenPayCodeButton = true,
+                showOpenPayCodeButton = result.reason != PayCodeFailure.NeedSms,
                 showNativeQr = false,
                 payload = null,
                 ttlSeconds = null,

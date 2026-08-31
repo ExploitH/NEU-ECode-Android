@@ -82,7 +82,8 @@ fun ECodeScreen(
 fun BalanceHeader(
     balance: com.neko.neuecode.domain.model.Balance,
     isSyncing: Boolean,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    refreshEnabled: Boolean = true,
 ) {
     Card(
         modifier = Modifier
@@ -125,7 +126,7 @@ fun BalanceHeader(
             
             IconButton(
                 onClick = onRefresh,
-                enabled = !isSyncing
+                enabled = refreshEnabled && !isSyncing
             ) {
                 if (isSyncing) {
                     CircularProgressIndicator(

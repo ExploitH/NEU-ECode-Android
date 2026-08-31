@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.neko.neuecode.data.repository.ECodePayCodeRepository
 import com.neko.neuecode.data.repository.PersonalRepository
+import com.neko.neuecode.domain.ecode.PayCodeFailure
 import com.neko.neuecode.domain.ecode.PayCodeParseResult
 import com.neko.neuecode.domain.model.Balance
 import com.neko.neuecode.domain.model.Result
@@ -28,6 +29,7 @@ data class PayCodeUiState(
     val isSyncingBalance: Boolean = false,
     val balanceError: String? = null,
     val widgetShowBalance: Boolean = true,
+    val awaitingSms: Boolean = false,
 )
 
 @HiltViewModel
@@ -47,6 +49,13 @@ class PayCodeViewModel @Inject constructor(
     }
 
     fun refresh() {
+        if (!PayCodeRefreshPolicy.canRefreshPayCode(
+                awaitingSms = _uiState.value.awaitingSms,
+                isRefreshing = _uiState.value.home.status == PayCodeHomeStatus.Loading,
+            )
+        ) {
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 home = PayCodeHomePresentation.loading(),
@@ -78,6 +87,8 @@ class PayCodeViewModel @Inject constructor(
                 val payCode = payCodeJob.await()
                 _uiState.value = _uiState.value.copy(
                     home = PayCodeHomePresentation.from(payCode),
+                    awaitingSms = payCode is PayCodeParseResult.Failure &&
+                        payCode.reason == PayCodeFailure.NeedSms,
                 )
                 persistWidgetQr(payCode)
             }

@@ -66,6 +66,9 @@ class JwxtCasAuthenticator(
         if (pageCode !in 200..299) {
             throw JwxtAuthenticationException("CAS login page failed: HTTP $pageCode")
         }
+        if (JwxtCasCrypto.looksLikeSmsChallenge(pageBody)) {
+            throw JwxtHumanVerificationRequired("CAS requires live SMS/CAPTCHA/device verification")
+        }
         val scriptUrl = JwxtCasCrypto.extractLoginScriptUrl(pageBody, pageUrl.toString())
             ?: throw JwxtAuthenticationException("CAS RSA public key is unavailable")
         val js = http.newCall(

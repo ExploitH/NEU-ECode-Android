@@ -52,8 +52,11 @@ fun PayCodeScreen(
                 title = { Text("付款码") },
                 windowInsets = WindowInsets.statusBars,
                 actions = {
-                    TextButton(onClick = { viewModel.refresh() }) {
-                        Text("刷新")
+                    TextButton(
+                        onClick = { viewModel.refresh() },
+                        enabled = !state.awaitingSms,
+                    ) {
+                        Text(if (state.awaitingSms) "等待短信验证" else "刷新")
                     }
                 },
             )
@@ -70,8 +73,9 @@ fun PayCodeScreen(
             if (state.balance != null) {
                 BalanceHeader(
                     balance = state.balance!!,
-                    isSyncing = state.isSyncingBalance,
+                    isSyncing = state.isSyncingBalance && !state.awaitingSms,
                     onRefresh = { viewModel.refresh() },
+                    refreshEnabled = !state.awaitingSms,
                 )
             } else if (state.isSyncingBalance) {
                 Text(

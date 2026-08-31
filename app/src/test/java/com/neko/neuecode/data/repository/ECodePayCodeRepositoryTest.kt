@@ -5,6 +5,7 @@ import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.data.remote.ecode.ECodePayCodeApi
 import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
 import com.neko.neuecode.data.remote.jwxt.JwxtCasLoginResult
+import com.neko.neuecode.data.remote.jwxt.JwxtHumanVerificationRequired
 import com.neko.neuecode.domain.ecode.PayCodeFailure
 import com.neko.neuecode.domain.ecode.PayCodeParseResult
 import io.mockk.every
@@ -106,6 +107,29 @@ class ECodePayCodeRepositoryTest {
             val failure = result as PayCodeParseResult.Failure
             assertEquals(PayCodeFailure.NeedRelogin, failure.reason)
         }
+    }
+
+    @Test
+    fun fetchPayCode_smsChallenge_returnsNeedSmsWithoutRetryingLogin() = runBlocking {
+        val authenticator = mockk<JwxtCasAuthenticator>()
+        every { authenticator.login(any(), any(), any()) } throws
+            JwxtHumanVerificationRequired("CAS requires live SMS/CAPTCHA/device verification")
+        val store = mockk<SecureCredentialStore>()
+        every { store.load() } returns SecureCredentialStore.Credentials("20240001", "secret")
+        val repository = ECodePayCodeRepository(
+            api = ECodePayCodeApi(OkHttpClient()),
+            authenticator = authenticator,
+            credentialStore = store,
+            http = OkHttpClient(),
+        )
+
+        val first = repository.fetchPayCode(nowEpochMs) as PayCodeParseResult.Failure
+        val second = repository.fetchPayCode(nowEpochMs) as PayCodeParseResult.Failure
+
+        assertEquals(PayCodeFailure.NeedSms, first.reason)
+        assertEquals(PayCodeFailure.NeedSms, second.reason)
+        assertTrue(first.message.orEmpty().contains("不要反复点刷新"))
+        verify(exactly = 1) { authenticator.login(any(), any(), any()) }
     }
 
     @Test
