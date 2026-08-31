@@ -147,6 +147,151 @@ class SchedulePresentationTest {
     }
 
     @Test
+    fun cellsForWeek_sundayTermStartDoesNotShowWeek2ClassInWeek1() {
+        val sundayTerm = ScheduleWeekClock.localEpochDay(2026, 8, 30)
+        val doc = JwxtScheduleNormalizer.normalize(
+            account = "20240001",
+            termCode = "2026-2027-1",
+            termName = "2026-2027学年秋季学期",
+            campusCode = "01",
+            campusName = "浑南校区",
+            sections = emptyList(),
+            schedule = JsonParser.parseString(
+                """
+                {
+                  "arrangedList": [
+                    {
+                      "courseCode": "A4002",
+                      "courseName": "第二周才开始的课",
+                      "teachClassId": "JX402",
+                      "courseSerialNo": "JX402",
+                      "teachClassName": "信息2401",
+                      "teachingTarget": "信息2401",
+                      "credit": "2.0",
+                      "campusName": "浑南校区",
+                      "weeksAndTeachers": "2-8周[理论]/张三[主讲]",
+                      "beginTime": "08:30",
+                      "endTime": "10:10",
+                      "beginSection": 1,
+                      "endSection": 2,
+                      "placeName": "信息A101",
+                      "dayOfWeek": 2,
+                      "titleDetail": ["信息2401", "第二周才开始的课 JX402", "2-8周 张三 浑南校区 信息A101", "考试 / 百分制"],
+                      "titleWeekTeacherClassroomDetail": ["2-8周 张三 浑南校区 信息A101"]
+                    }
+                  ],
+                  "notArrangeList": [],
+                  "practiceList": []
+                }
+                """.trimIndent(),
+            ).asJsonObject,
+            generatedAt = "2026-08-26T00:00:00Z",
+        )
+        val week1 = SchedulePresentation.cellsForWeek(
+            doc,
+            week = 1,
+            weekStartDay = WeekStartDay.SUNDAY,
+            termStartEpochDay = sundayTerm,
+        )
+        val week2 = SchedulePresentation.cellsForWeek(
+            doc,
+            week = 2,
+            weekStartDay = WeekStartDay.SUNDAY,
+            termStartEpochDay = sundayTerm,
+        )
+        assertTrue(week1.none { it.courseName == "第二周才开始的课" })
+        assertEquals(listOf("第二周才开始的课"), week2.map { it.courseName })
+        assertEquals(2, week2.single().weekday)
+    }
+
+    @Test
+    fun sundayFirst_keepsTuesdayInTuesdayColumnNotMonday() {
+        val doc = JwxtScheduleNormalizer.normalize(
+            account = "20240001",
+            termCode = "2026-2027-1",
+            termName = "2026-2027学年秋季学期",
+            campusCode = "01",
+            campusName = "浑南校区",
+            sections = emptyList(),
+            schedule = JsonParser.parseString(
+                """
+                {
+                  "arrangedList": [
+                    {
+                      "courseCode": "A3001",
+                      "courseName": "周一课程",
+                      "teachClassId": "JX301",
+                      "courseSerialNo": "JX301",
+                      "teachClassName": "信息2401",
+                      "teachingTarget": "信息2401",
+                      "credit": "2.0",
+                      "campusName": "浑南校区",
+                      "weeksAndTeachers": "1周[理论]/张三[主讲]",
+                      "beginTime": "08:30",
+                      "endTime": "10:10",
+                      "beginSection": 1,
+                      "endSection": 2,
+                      "placeName": "信息A101",
+                      "dayOfWeek": 1,
+                      "titleDetail": ["信息2401", "周一课程 JX301", "1周 张三 浑南校区 信息A101", "考试 / 百分制"],
+                      "titleWeekTeacherClassroomDetail": ["1周 张三 浑南校区 信息A101"]
+                    },
+                    {
+                      "courseCode": "A3002",
+                      "courseName": "周二课程",
+                      "teachClassId": "JX302",
+                      "courseSerialNo": "JX302",
+                      "teachClassName": "信息2401",
+                      "teachingTarget": "信息2401",
+                      "credit": "2.0",
+                      "campusName": "浑南校区",
+                      "weeksAndTeachers": "1周[理论]/张三[主讲]",
+                      "beginTime": "10:30",
+                      "endTime": "12:10",
+                      "beginSection": 3,
+                      "endSection": 4,
+                      "placeName": "信息A102",
+                      "dayOfWeek": 2,
+                      "titleDetail": ["信息2401", "周二课程 JX302", "1周 张三 浑南校区 信息A102", "考试 / 百分制"],
+                      "titleWeekTeacherClassroomDetail": ["1周 张三 浑南校区 信息A102"]
+                    }
+                  ],
+                  "notArrangeList": [],
+                  "practiceList": []
+                }
+                """.trimIndent(),
+            ).asJsonObject,
+            generatedAt = "2026-08-26T00:00:00Z",
+        )
+        val termStart = ScheduleWeekClock.localEpochDay(2026, 8, 31)
+        val week1 = SchedulePresentation.cellsForWeek(
+            doc,
+            week = 1,
+            weekStartDay = WeekStartDay.SUNDAY,
+            termStartEpochDay = termStart,
+        )
+        val headers = ScheduleWeekLayout.headers(
+            weekStartDay = WeekStartDay.SUNDAY,
+            termStartEpochDay = termStart,
+            week = 1,
+            courseCounts = week1.groupingBy { it.weekday }.eachCount(),
+        )
+        val tuesday = week1.single { it.courseName == "周二课程" }
+        val monday = week1.single { it.courseName == "周一课程" }
+        assertEquals(listOf("日", "一", "二", "三", "四", "五", "六"), headers.map { it.label })
+        assertEquals(listOf("8.30", "8.31", "9.1", "9.2", "9.3", "9.4", "9.5"), headers.map { it.dateLabel })
+        assertEquals(1, monday.weekday)
+        assertEquals(2, tuesday.weekday)
+        assertEquals(1, ScheduleWeekLayout.columnIndex(monday.weekday, WeekStartDay.SUNDAY))
+        assertEquals(2, ScheduleWeekLayout.columnIndex(tuesday.weekday, WeekStartDay.SUNDAY))
+        assertEquals("一", headers[ScheduleWeekLayout.columnIndex(monday.weekday, WeekStartDay.SUNDAY)].label)
+        assertEquals("二", headers[ScheduleWeekLayout.columnIndex(tuesday.weekday, WeekStartDay.SUNDAY)].label)
+        assertEquals("8.31", headers[ScheduleWeekLayout.columnIndex(monday.weekday, WeekStartDay.SUNDAY)].dateLabel)
+        assertEquals("9.1", headers[ScheduleWeekLayout.columnIndex(tuesday.weekday, WeekStartDay.SUNDAY)].dateLabel)
+        assertEquals(0, ScheduleWeekLayout.columnIndex(7, WeekStartDay.SUNDAY))
+    }
+
+    @Test
     fun cellsByWeek_matchesPerWeekLookup() {
         val byWeek = SchedulePresentation.cellsByWeek(document, maxWeek = 5)
         assertEquals(5, byWeek.size)

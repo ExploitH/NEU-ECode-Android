@@ -200,6 +200,42 @@ class ScheduleWeekLayoutTest {
     }
 
     @Test
+    fun displayWeekOfOccurrence_doesNotPullWeek2IntoWeek1WhenTermStartsSunday() {
+        val termStart = ScheduleWeekClock.localEpochDay(2026, 8, 30) // Sunday
+        assertEquals(7, ScheduleWeekClock.weekdayOf(termStart))
+        assertEquals(
+            1,
+            ScheduleWeekLayout.displayWeekOfOccurrence(
+                termStartEpochDay = termStart,
+                academicWeek = 1,
+                weekday = 7,
+                weekStartDay = WeekStartDay.SUNDAY,
+            ),
+        )
+        for (weekday in 1..6) {
+            assertEquals(
+                "weekday $weekday from academic week 2 leaked into display week 1",
+                2,
+                ScheduleWeekLayout.displayWeekOfOccurrence(
+                    termStartEpochDay = termStart,
+                    academicWeek = 2,
+                    weekday = weekday,
+                    weekStartDay = WeekStartDay.SUNDAY,
+                ),
+            )
+        }
+        assertEquals(
+            2,
+            ScheduleWeekLayout.displayWeekOfOccurrence(
+                termStartEpochDay = termStart,
+                academicWeek = 2,
+                weekday = 7,
+                weekStartDay = WeekStartDay.SUNDAY,
+            ),
+        )
+    }
+
+    @Test
     fun headers_mondayFirstKeepMonToSunDates() {
         val termStart = ScheduleWeekClock.localEpochDay(2026, 8, 31)
         val headers = ScheduleWeekLayout.headers(

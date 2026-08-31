@@ -62,6 +62,17 @@ object ScheduleWeekLayout {
         return weekStart + offset
     }
 
+    fun occurrenceEpochDay(
+        termStartEpochDay: Long?,
+        academicWeek: Int,
+        weekday: Int,
+    ): Long? {
+        if (termStartEpochDay == null || academicWeek < 1 || weekday !in 1..7) return null
+        val startWeekday = ScheduleWeekClock.weekdayOf(termStartEpochDay)
+        val offset = (weekday - startWeekday + 7) % 7
+        return termStartEpochDay + (academicWeek - 1L) * 7L + offset
+    }
+
     fun displayWeekOfOccurrence(
         termStartEpochDay: Long?,
         academicWeek: Int,
@@ -70,12 +81,7 @@ object ScheduleWeekLayout {
     ): Int? {
         if (academicWeek < 1 || weekday !in 1..7) return null
         if (termStartEpochDay == null || weekStartDay == WeekStartDay.MONDAY) return academicWeek
-        val date = weekdayEpochDay(
-            termStartEpochDay = termStartEpochDay,
-            week = academicWeek,
-            weekday = weekday,
-            weekStartDay = WeekStartDay.MONDAY,
-        ) ?: return academicWeek
+        val date = occurrenceEpochDay(termStartEpochDay, academicWeek, weekday) ?: return academicWeek
         val firstStart = displayWeekStartEpochDay(termStartEpochDay, 1, weekStartDay) ?: return academicWeek
         if (date < firstStart) return 1
         return ((date - firstStart) / 7L + 1L).toInt()
