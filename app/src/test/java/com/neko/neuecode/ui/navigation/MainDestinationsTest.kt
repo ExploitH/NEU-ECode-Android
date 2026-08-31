@@ -34,9 +34,11 @@ class MainDestinationsTest {
     }
 
     @Test
-    fun payCodeFailureStart_navigatesToEcodeWebView() {
-        assertEquals("ecodeWebView", MainDestinations.openPayCodeRoute)
-        assertEquals(MainDestinations.ECODE_WEBVIEW, MainDestinations.openPayCodeRoute)
+    fun payCodeFailureStart_staysOnPausedPayTab() {
+        assertEquals("pay", MainDestinations.openPayCodeRoute)
+        assertEquals(MainDestinations.PAY, MainDestinations.openPayCodeRoute)
+        assertTrue(MainDestinations.isBottomBar(MainDestinations.openPayCodeRoute))
+        assertFalse(MainDestinations.isSecondary(MainDestinations.openPayCodeRoute))
     }
 
     @Test
@@ -57,11 +59,12 @@ class MainDestinationsTest {
     }
 
     @Test
-    fun scheduleWidgetLaunch_opensScheduleWhileNormalLaunchStaysOnPay() {
+    fun launch_opensScheduleByDefaultEvenWhenPayIsRequested() {
         assertEquals(MainDestinations.SCHEDULE, MainDestinations.widgetStartRoute)
         assertEquals(MainDestinations.SCHEDULE, MainDestinations.resolveStartRoute("schedule"))
-        assertEquals(MainDestinations.PAY, MainDestinations.resolveStartRoute(null))
-        assertEquals(MainDestinations.PAY, MainDestinations.resolveStartRoute("unexpected"))
+        assertEquals(MainDestinations.SCHEDULE, MainDestinations.resolveStartRoute(null))
+        assertEquals(MainDestinations.SCHEDULE, MainDestinations.resolveStartRoute("pay"))
+        assertEquals(MainDestinations.SCHEDULE, MainDestinations.resolveStartRoute("unexpected"))
         assertTrue(MainDestinations.shouldRefreshScheduleWidgets("schedule"))
         assertFalse(MainDestinations.shouldRefreshScheduleWidgets(null))
         assertFalse(MainDestinations.shouldRefreshScheduleWidgets("unexpected"))

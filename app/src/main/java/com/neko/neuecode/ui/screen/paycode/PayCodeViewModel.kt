@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.neko.neuecode.data.repository.ECodePayCodeRepository
 import com.neko.neuecode.data.repository.PersonalRepository
+import com.neko.neuecode.domain.ecode.EcodeModuleAvailability
 import com.neko.neuecode.domain.ecode.PayCodeFailure
 import com.neko.neuecode.domain.ecode.PayCodeParseResult
 import com.neko.neuecode.domain.model.Balance
@@ -48,7 +49,11 @@ class PayCodeViewModel @Inject constructor(
     private var autoFetchJob: Job? = null
 
     init {
-        refresh(userInitiated = true)
+        if (EcodeModuleAvailability.shouldFetchPayCode()) {
+            refresh(userInitiated = true)
+        } else {
+            stopAutoFetch()
+        }
     }
 
     fun refresh() {
@@ -56,6 +61,10 @@ class PayCodeViewModel @Inject constructor(
     }
 
     private fun refresh(userInitiated: Boolean) {
+        if (!EcodeModuleAvailability.shouldFetchPayCode()) {
+            stopAutoFetch()
+            return
+        }
         if (!PayCodeRefreshPolicy.canRefreshPayCode(
                 awaitingSms = _uiState.value.awaitingSms,
                 isRefreshing = _uiState.value.home.status == PayCodeHomeStatus.Loading,

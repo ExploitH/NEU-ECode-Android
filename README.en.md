@@ -5,7 +5,7 @@
 **A native companion for campus life at Northeastern University.**  
 NEU eCode Android re-stages pay-code, timetable, and campus-intranet access in Kotlin, Jetpack Compose, and Material 3 — a clean, restrained, auditable client for everyday campus work.
 
-Current public release: **7.2.1** (`versionCode 71`)
+Current public release: **7.3** (`versionCode 72`)
 
 > This public repository is a sanitized Android client source release. It does **not** include backend source code, Cloudflare Worker source code, private deployment config, private account data, session cookies, signing keys, private APK download links, raw protocol key material, or raw diagnostic logs.
 
@@ -35,10 +35,10 @@ Visually, 7.0 is unified under the Mountain & River brand: primary blue `#0F45AF
 
 | Surface | In 7.0 |
 |---|---|
-| Pay code | A scannable QR is drawn center-stage when the protocol succeeds; only failures fall back to a secondary WebView. The home-screen widget uses the same protocol payload. |
+| Pay code | Temporarily paused. The pay-code tab shows a notice that campus systems are updating frequently; the module will reopen gradually afterwards. |
 | Timetable | Read-only JWXT: a 7×12 grid, term picker, local term settings, album-style week paging. Cells are computed per week, with one neighbour prefetched on each side. |
 | Campus intranet | In-app official OpenVPN 3 student tunnel, split so public traffic stays off the tunnel. Idle / Connecting / Connected Lottie states. |
-| Me | Long-term login, balance entry, intranet connection, about/agreement, cache cleanup. |
+| Me | Long-term login, intranet connection, about/agreement, cache cleanup. |
 | Updates | A private helper service publishes version metadata; older installs receive an in-app update prompt. |
 
 The bottom bar has only three destinations: **Pay code / Timetable / Me**. Recharge, intranet, and the eCode WebView remain secondary screens.
@@ -179,7 +179,8 @@ Current release line:
 | 6.0 | 67 | In-app OpenVPN 3, protocol pay-code, Sleepy-style timetable |
 | 7.0 | 68 | First-sync 403 fix, named sync progress, VPN Lottie triad, Mountain & River branding, per-week paging |
 | 7.1 | 69 | Faster course-widget refresh and remaining-today classes; weekly timetable widget is next |
-| **7.2.1** | **71** | Week grid now starts on Sunday by default and shows short calendar dates; 课表设定 can switch back to Monday |
+| **7.3** | **72** | Temporarily pause pay-code / eCode; keep timetable and campus VPN. Pay-code tab shows the campus-system update notice. |
+| 7.2.1 | 71 | Week grid now starts on Sunday by default and shows short calendar dates; 课表设定 can switch back to Monday |
 | 7.2 | 70 | Polished home-screen widgets; the weekly timetable widget is now a date-switchable single-day timetable |
 
 Mainland access should prefer the [Gitee mirror](https://gitee.com/exploith/neu-ecode). GitHub remains the primary repository: `ExploitH/NEU-ECode-Android`.

@@ -52,7 +52,7 @@ fun MainAppScreen(
     cookieJar: PersistentCookieJar,
     userPreferences: UserPreferences,
     authRepository: AuthRepository,
-    initialStartRoute: String = MainDestinations.PAY,
+    initialStartRoute: String = MainDestinations.resolveStartRoute(null),
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -116,8 +116,16 @@ fun MainAppScreen(
         ) {
             composable(MainDestinations.PAY) {
                 PayCodeScreen(
-                    onOpenPayCode = { navController.navigate(MainDestinations.openPayCodeRoute) },
-                    onOpenRecharge = { navController.navigate(MainDestinations.RECHARGE) },
+                    onOpenPayCode = {
+                        if (com.neko.neuecode.domain.ecode.EcodeModuleAvailability.shouldOpenPayCodeWebView()) {
+                            navController.navigate(MainDestinations.openPayCodeRoute)
+                        }
+                    },
+                    onOpenRecharge = {
+                        if (com.neko.neuecode.domain.ecode.EcodeModuleAvailability.shouldOpenRecharge()) {
+                            navController.navigate(MainDestinations.RECHARGE)
+                        }
+                    },
                 )
             }
 

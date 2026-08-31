@@ -81,7 +81,7 @@ fun IntranetVpnScreen(
             VpnStatusMark(artwork = VpnStatusArtwork.forPhase(state.phase))
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "连接东北大学学生 VPN 后才能访问教务 / 付款码校园接口。",
+                "连接东北大学学生 VPN 后才能访问教务系统校园接口。",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(modifier = Modifier.height(16.dp))

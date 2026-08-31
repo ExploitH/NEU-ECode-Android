@@ -113,6 +113,15 @@ class ECodeWidgetProvider : AppWidgetProvider() {
         private fun refreshQrAsync(context: Context, pendingResult: PendingResult?) {
             val appContext = context.applicationContext
             val widgetIds = allWidgetIds(appContext)
+            if (!com.neko.neuecode.domain.ecode.EcodeModuleAvailability.shouldFetchPayCode()) {
+                ECodeWidgetStore.saveStatus(
+                    appContext,
+                    com.neko.neuecode.domain.ecode.EcodeModuleAvailability.PAUSE_NOTICE,
+                )
+                render(appContext, widgetIds, loading = false)
+                pendingResult?.finish()
+                return
+            }
             render(appContext, widgetIds, loading = true)
             scope.launch {
                 try {

@@ -22,13 +22,19 @@ object MainDestinations {
     val secondary: List<String> = listOf(RECHARGE, INTRANET, ECODE_WEBVIEW)
 
     /** Route used when protocol pay-code fetch fails and user taps 「打开付款码」. */
-    const val openPayCodeRoute: String = ECODE_WEBVIEW
+    val openPayCodeRoute: String
+        get() = if (com.neko.neuecode.domain.ecode.EcodeModuleAvailability.shouldOpenPayCodeWebView()) {
+            ECODE_WEBVIEW
+        } else {
+            PAY
+        }
 
     /** Start route requested by both schedule home-screen widgets. */
     const val widgetStartRoute: String = SCHEDULE
 
     fun resolveStartRoute(requestedRoute: String?): String {
-        return if (requestedRoute == widgetStartRoute) SCHEDULE else PAY
+        if (requestedRoute == widgetStartRoute) return SCHEDULE
+        return com.neko.neuecode.domain.ecode.EcodeModuleAvailability.defaultStartRoute()
     }
 
     fun shouldRefreshScheduleWidgets(requestedRoute: String?): Boolean {

@@ -50,10 +50,13 @@ class NeuECodeApplication : Application(), Configuration.Provider {
             com.neko.neuecode.util.NotificationUtil.createNotificationChannels(this)
             
             // Schedule session refresh (every 2 hours)
-            com.neko.neuecode.worker.SessionRefreshWorker.schedule(this)
-            
-            // Schedule balance sync (every 6 hours)
-            com.neko.neuecode.worker.BalanceSyncWorker.schedule(this)
+            if (com.neko.neuecode.domain.ecode.EcodeModuleAvailability.shouldScheduleEcodeBackgroundWork()) {
+                com.neko.neuecode.worker.SessionRefreshWorker.schedule(this)
+                com.neko.neuecode.worker.BalanceSyncWorker.schedule(this)
+            } else {
+                com.neko.neuecode.worker.SessionRefreshWorker.cancel(this)
+                com.neko.neuecode.worker.BalanceSyncWorker.cancel(this)
+            }
 
             // Re-render cached schedule widgets every 6 hours as a local-only fallback.
             com.neko.neuecode.widget.ScheduleWidgetRefreshWorker.schedule(this)

@@ -11,7 +11,7 @@ object ECodeWidgetPresentation {
             val ttl = ttlSeconds?.takeIf { it > 0 }
             if (ttl != null) "付款码 · ${ttl}秒内有效" else "付款码已更新"
         } else {
-            "付款码刷新失败，点码重试"
+            "付款码功能暂时停用"
         }
     }
 
