@@ -1,5 +1,7 @@
 package com.neko.neuecode.domain.jwxt
 
+import com.neko.neuecode.data.local.schedule.WeekStartDay
+
 data class ScheduleGridCell(
     val weekday: Int,
     val startSection: Int,
@@ -34,10 +36,24 @@ data class CourseDetail(
 )
 
 object SchedulePresentation {
-    fun cellsForWeek(document: JwxtScheduleDocument, week: Int): List<ScheduleGridCell> {
+    fun cellsForWeek(
+        document: JwxtScheduleDocument,
+        week: Int,
+        weekStartDay: WeekStartDay = WeekStartDay.MONDAY,
+        termStartEpochDay: Long? = null,
+    ): List<ScheduleGridCell> {
         val target = week.coerceAtLeast(1)
         return document.events
-            .filter { target in it.weeks }
+            .filter { event ->
+                event.weeks.any { academicWeek ->
+                    ScheduleWeekLayout.displayWeekOfOccurrence(
+                        termStartEpochDay = termStartEpochDay,
+                        academicWeek = academicWeek,
+                        weekday = event.weekday,
+                        weekStartDay = weekStartDay,
+                    ) == target
+                }
+            }
             .sortedWith(compareBy({ it.weekday }, { it.sections.start }))
             .map { event ->
                 ScheduleGridCell(

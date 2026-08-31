@@ -1,6 +1,7 @@
 package com.neko.neuecode.domain.jwxt
 
 import com.google.gson.JsonParser
+import com.neko.neuecode.data.local.schedule.WeekStartDay
 import com.neko.neuecode.data.remote.jwxt.JwxtScheduleNormalizer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -85,6 +86,64 @@ class SchedulePresentationTest {
         assertTrue(week1.all { it.courseKey == "A1001:JX001" })
         assertEquals(document.events.map { it.id }, week1.map { it.eventId })
         assertEquals(week1.map { it.eventId }, week5.map { it.eventId })
+    }
+
+    @Test
+    fun cellsForWeek_sundayFirstMovesSundayClassToNextDisplayWeek() {
+        val sundayDoc = JwxtScheduleNormalizer.normalize(
+            account = "20240001",
+            termCode = "2026-2027-1",
+            termName = "2026-2027学年秋季学期",
+            campusCode = "01",
+            campusName = "浑南校区",
+            sections = emptyList(),
+            schedule = JsonParser.parseString(
+                """
+                {
+                  "arrangedList": [
+                    {
+                      "courseCode": "A2002",
+                      "courseName": "周日课程",
+                      "teachClassId": "JX002",
+                      "courseSerialNo": "JX002",
+                      "teachClassName": "信息2401",
+                      "teachingTarget": "信息2401",
+                      "credit": "2.0",
+                      "campusName": "浑南校区",
+                      "weeksAndTeachers": "1周[理论]/张三[主讲]",
+                      "beginTime": "08:30",
+                      "endTime": "10:10",
+                      "beginSection": 1,
+                      "endSection": 2,
+                      "placeName": "信息A101",
+                      "dayOfWeek": 7,
+                      "titleDetail": ["信息2401", "周日课程 JX002", "1周 张三 浑南校区 信息A101", "考试 / 百分制"],
+                      "titleWeekTeacherClassroomDetail": ["1周 张三 浑南校区 信息A101"]
+                    }
+                  ],
+                  "notArrangeList": [],
+                  "practiceList": []
+                }
+                """.trimIndent(),
+            ).asJsonObject,
+            generatedAt = "2026-08-26T00:00:00Z",
+        )
+        val termStart = ScheduleWeekClock.localEpochDay(2026, 8, 31)
+        val week1 = SchedulePresentation.cellsForWeek(
+            sundayDoc,
+            week = 1,
+            weekStartDay = WeekStartDay.SUNDAY,
+            termStartEpochDay = termStart,
+        )
+        val week2 = SchedulePresentation.cellsForWeek(
+            sundayDoc,
+            week = 2,
+            weekStartDay = WeekStartDay.SUNDAY,
+            termStartEpochDay = termStart,
+        )
+        assertTrue(week1.none { it.weekday == 7 })
+        assertEquals(listOf(7), week2.map { it.weekday })
+        assertEquals("周日课程", week2.single().courseName)
     }
 
     @Test

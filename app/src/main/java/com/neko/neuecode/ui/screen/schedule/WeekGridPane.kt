@@ -64,7 +64,12 @@ fun WeekGridPane(
     termStartEpochDay: Long? = null,
 ) {
     WeekGridPane(
-        cells = SchedulePresentation.cellsForWeek(document, week),
+        cells = SchedulePresentation.cellsForWeek(
+            document = document,
+            week = week,
+            weekStartDay = weekStartDay,
+            termStartEpochDay = termStartEpochDay,
+        ),
         sections = document.sections,
         todayWeekday = todayWeekday,
         weekStartDay = weekStartDay,
