@@ -3,15 +3,15 @@
     android:id="@+id/widget_schedule_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/schedule_widget_bg"
     android:orientation="vertical"
-    android:padding="14dp"
-    android:background="@drawable/schedule_widget_bg">
+    android:padding="12dp">
 
     <TextView
         android:id="@+id/widget_schedule_kicker"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="本周课表"
+        android:text="单日课表"
         android:textColor="#64748B"
         android:textSize="11sp" />
 
@@ -20,29 +20,74 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="课表·本周"
-        android:textStyle="bold"
+        android:text="今日"
         android:textColor="#0F172A"
-        android:textSize="16sp" />
+        android:textSize="16sp"
+        android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/widget_schedule_counts"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="一 二 三 四 五 六 日"
-        android:textColor="#475569"
-        android:textSize="11sp" />
-
-    <TextView
-        android:id="@+id/widget_schedule_body"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:lineSpacingExtra="3dp"
-        android:maxLines="6"
-        android:ellipsize="end"
-        android:text="点按打开课表"
-        android:textColor="#334155"
-        android:textSize="12sp" />
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_day_prev"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:background="@drawable/schedule_day_chip_bg"
+            android:gravity="center"
+            android:text="上一天"
+            android:textColor="#0F45AF"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/widget_day_today"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/schedule_day_chip_today_bg"
+            android:gravity="center"
+            android:text="今日"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/widget_day_next"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:background="@drawable/schedule_day_chip_bg"
+            android:gravity="center"
+            android:text="下一天"
+            android:textColor="#0F45AF"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/widget_day_cards"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/widget_schedule_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="12dp"
+            android:text="当天无课"
+            android:textColor="#64748B"
+            android:textSize="13sp"
+            android:visibility="gone" />
+    </FrameLayout>
 </LinearLayout>

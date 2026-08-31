@@ -98,9 +98,12 @@
         <receiver
             android:name=".widget.ScheduleWeekWidgetProvider"
             android:exported="false"
-            android:label="课表·本周">
+            android:label="课表·单日">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.neko.neuecode.widget.ACTION_DAY_PREV" />
+                <action android:name="com.neko.neuecode.widget.ACTION_DAY_TODAY" />
+                <action android:name="com.neko.neuecode.widget.ACTION_DAY_NEXT" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

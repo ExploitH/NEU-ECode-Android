@@ -1,8 +1,10 @@
 package com.neko.neuecode.widget
 
+import com.neko.neuecode.domain.jwxt.CourseColorHasher
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.SchedulePresentation
 import com.neko.neuecode.domain.jwxt.ScheduleTodayItem
+import com.neko.neuecode.R
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -10,6 +12,17 @@ object ScheduleWidgetPresentation {
     private val weekdayNames = listOf("一", "二", "三", "四", "五", "六", "日")
     const val noClassCopy = "今日无课"
     const val finishedCopy = "今日课程已上完"
+    const val dayEmptyCopy = "当天无课"
+
+    data class DayCard(
+        val courseName: String,
+        val classroom: String,
+        val timeLabel: String,
+        val sectionLabel: String,
+        val backgroundColor: Int,
+        val backgroundResIndex: Int,
+        val courseKey: String,
+    )
 
     fun todayLines(
         document: JwxtScheduleDocument?,
@@ -28,6 +41,60 @@ object ScheduleWidgetPresentation {
             "${item.startTime}-${item.endTime}  ${item.courseName}  ${item.classroom}".trim()
         }
     }
+
+    fun dayCards(
+        document: JwxtScheduleDocument?,
+        week: Int?,
+        weekday: Int,
+    ): List<DayCard> {
+        if (document == null || week == null) return emptyList()
+        return SchedulePresentation.todayItems(document, weekday, week).map { item ->
+            DayCard(
+                courseName = item.courseName,
+                classroom = item.classroom,
+                timeLabel = "${item.startTime}-${item.endTime}",
+                sectionLabel = "第${item.startSection}-${item.endSection}节",
+                backgroundColor = pastelColor(item.eventId),
+                backgroundResIndex = cardBackgroundIndex(item.eventId),
+                courseKey = item.eventId,
+            )
+        }
+    }
+
+    fun pastelColor(courseKey: String): Int {
+        val hue = CourseColorHasher.hue(courseKey)
+        return hsvToColor(hue, 0.42f, 0.92f)
+    }
+
+    fun hsvToColor(hue: Float, saturation: Float, value: Float): Int {
+        val h = ((hue % 360f) + 360f) % 360f / 60f
+        val c = value * saturation
+        val x = c * (1f - kotlin.math.abs(h % 2f - 1f))
+        val m = value - c
+        val (r1, g1, b1) = when (h.toInt()) {
+            0 -> Triple(c, x, 0f)
+            1 -> Triple(x, c, 0f)
+            2 -> Triple(0f, c, x)
+            3 -> Triple(0f, x, c)
+            4 -> Triple(x, 0f, c)
+            else -> Triple(c, 0f, x)
+        }
+        fun channel(part: Float): Int = ((part + m) * 255f).toInt().coerceIn(0, 255)
+        return (0xFF shl 24) or (channel(r1) shl 16) or (channel(g1) shl 8) or channel(b1)
+    }
+
+    fun cardBackgroundIndex(courseKey: String): Int {
+        return ((CourseColorHasher.hue(courseKey) / 60f).toInt() % 6 + 6) % 6
+    }
+
+    val cardBackgrounds: IntArray = intArrayOf(
+        R.drawable.schedule_day_class_card_bg_0,
+        R.drawable.schedule_day_class_card_bg_1,
+        R.drawable.schedule_day_class_card_bg_2,
+        R.drawable.schedule_day_class_card_bg_3,
+        R.drawable.schedule_day_class_card_bg_4,
+        R.drawable.schedule_day_class_card_bg_5,
+    )
 
     fun remainingTodayItems(
         items: List<ScheduleTodayItem>,

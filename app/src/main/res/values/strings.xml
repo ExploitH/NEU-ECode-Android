@@ -3,5 +3,5 @@
     <string name="app_name">NEU e码通</string>
     <string name="ecode_widget_description">NEU e码通付款码与余额小组件</string>
     <string name="schedule_today_widget_description">今日课表小组件</string>
-    <string name="schedule_week_widget_description">本周课表小组件</string>
+    <string name="schedule_week_widget_description">单日课表小组件，可切换上一天、今日、下一天</string>
 </resources>

@@ -186,4 +186,29 @@ class ScheduleWidgetPresentationTest {
             }
         """.trimIndent()
     }
+
+    @Test
+    fun dayCards_showEveryClassOnThatDayEvenIfFinished() {
+        val cards = ScheduleWidgetPresentation.dayCards(
+            document = threeClassThursday(),
+            week = 2,
+            weekday = 4,
+        )
+        assertEquals(3, cards.size)
+        assertEquals(listOf("已上完的课", "正在上的课", "将要上的课"), cards.map { it.courseName })
+        assertEquals("08:00-09:40", cards.first().timeLabel)
+        assertTrue(cards.first().backgroundColor != 0)
+        assertEquals("1号B206", cards.first().classroom)
+    }
+
+    @Test
+    fun dayCards_emptyCopyWhenThatWeekdayHasNoEvents() {
+        val cards = ScheduleWidgetPresentation.dayCards(
+            document = document,
+            week = 2,
+            weekday = 1,
+        )
+        assertTrue(cards.isEmpty())
+        assertEquals("当天无课", ScheduleWidgetPresentation.dayEmptyCopy)
+    }
 }
