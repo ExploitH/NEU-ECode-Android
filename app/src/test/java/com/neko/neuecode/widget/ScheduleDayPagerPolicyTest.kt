@@ -32,12 +32,30 @@ class ScheduleDayPagerPolicyTest {
 
     @Test
     fun title_marksTodayAndRelativeDays() {
-        assertEquals("今日 · 周四", ScheduleDayPagerPolicy.title(offset = 0, weekday = 4, week = 2))
-        assertEquals("昨天 · 周三", ScheduleDayPagerPolicy.title(offset = -1, weekday = 3, week = 2))
-        assertEquals("明天 · 周五", ScheduleDayPagerPolicy.title(offset = 1, weekday = 5, week = 2))
-        assertEquals("第2周 · 周一", ScheduleDayPagerPolicy.title(offset = 4, weekday = 1, week = 2))
+        assertEquals(
+            "今日 · 8月27日 周四",
+            ScheduleDayPagerPolicy.title(offset = 0, weekday = 4, week = 2, epochDay = 20_692L),
+        )
+        assertEquals(
+            "昨天 · 8月26日 周三",
+            ScheduleDayPagerPolicy.title(offset = -1, weekday = 3, week = 2, epochDay = 20_691L),
+        )
+        assertEquals(
+            "明天 · 8月28日 周五",
+            ScheduleDayPagerPolicy.title(offset = 1, weekday = 5, week = 2, epochDay = 20_693L),
+        )
+        assertEquals(
+            "第2周 · 8月31日 周一",
+            ScheduleDayPagerPolicy.title(offset = 4, weekday = 1, week = 2, epochDay = 20_696L),
+        )
         assertTrue(ScheduleDayPagerPolicy.isToday(0))
         assertFalse(ScheduleDayPagerPolicy.isToday(1))
+    }
+
+    @Test
+    fun dateLabel_formatsMonthAndDay() {
+        assertEquals("8月27日", ScheduleDayPagerPolicy.dateLabel(20_692L))
+        assertEquals("1月1日", ScheduleDayPagerPolicy.dateLabel(20_454L))
     }
 
     @Test

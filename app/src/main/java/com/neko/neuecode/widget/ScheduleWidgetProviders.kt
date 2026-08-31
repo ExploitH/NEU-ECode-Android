@@ -21,16 +21,26 @@ class ScheduleTodayWidgetProvider : AppWidgetProvider() {
         val today = ScheduleWeekClock.todayEpochDay()
         val weekday = ScheduleWeekClock.todayWeekday()
         val actualWeek = ScheduleWeekClock.actualWeek(settings.termStartEpochDay, today)
-        val lines = ScheduleWidgetPresentation.todayLines(document, actualWeek, weekday)
+        val cards = ScheduleWidgetPresentation.todayCards(document, actualWeek, weekday)
+        val title = when {
+            document == null -> "暂无课表缓存"
+            settings.termStartEpochDay == null -> "请先设定开学日"
+            else -> ScheduleWidgetPresentation.todaySubtitle(actualWeek, weekday, today)
+        }
+        val emptyCopy = when {
+            document == null -> "打开课表同步"
+            settings.termStartEpochDay == null || actualWeek == null -> "开学日前不展示课表"
+            ScheduleWidgetPresentation.dayCards(document, actualWeek, weekday).isEmpty() ->
+                ScheduleWidgetPresentation.noClassCopy
+            cards.isEmpty() -> ScheduleWidgetPresentation.finishedCopy
+            else -> ""
+        }
         val open = pendingOpenApp(context, 1101)
         appWidgetIds.forEach { id ->
             val views = RemoteViews(context.packageName, R.layout.schedule_today_widget)
             views.setTextViewText(R.id.widget_schedule_kicker, "今日课表")
-            views.setTextViewText(
-                R.id.widget_schedule_title,
-                ScheduleWidgetPresentation.todaySubtitle(actualWeek, weekday),
-            )
-            views.setTextViewText(R.id.widget_schedule_body, lines.joinToString("\n"))
+            views.setTextViewText(R.id.widget_schedule_title, title)
+            bindClassCards(context.packageName, views, cards, emptyCopy)
             views.setOnClickPendingIntent(R.id.widget_schedule_root, open)
             appWidgetManager.updateAppWidget(id, views)
         }
@@ -81,40 +91,19 @@ class ScheduleWeekWidgetProvider : AppWidgetProvider() {
             val title = when {
                 document == null -> "暂无课表缓存"
                 settings.termStartEpochDay == null -> "请先设定开学日"
-                else -> ScheduleDayPagerPolicy.title(offset, weekday, week)
+                else -> ScheduleDayPagerPolicy.title(offset, weekday, week, selectedDay)
             }
             val cards = ScheduleWidgetPresentation.dayCards(document, week, weekday)
+            val emptyCopy = when {
+                document == null -> "打开课表同步"
+                settings.termStartEpochDay == null || week == null -> "开学日前不展示课表"
+                cards.isEmpty() -> ScheduleWidgetPresentation.dayEmptyCopy
+                else -> ""
+            }
             val views = RemoteViews(context.packageName, R.layout.schedule_week_widget)
             views.setTextViewText(R.id.widget_schedule_kicker, "单日课表")
             views.setTextViewText(R.id.widget_schedule_title, title)
-            views.removeAllViews(R.id.widget_day_cards)
-            if (document == null) {
-                views.setViewVisibility(R.id.widget_schedule_empty, View.VISIBLE)
-                views.setTextViewText(R.id.widget_schedule_empty, "打开课表同步")
-            } else if (settings.termStartEpochDay == null || week == null) {
-                views.setViewVisibility(R.id.widget_schedule_empty, View.VISIBLE)
-                views.setTextViewText(R.id.widget_schedule_empty, "开学日前不展示课表")
-            } else if (cards.isEmpty()) {
-                views.setViewVisibility(R.id.widget_schedule_empty, View.VISIBLE)
-                views.setTextViewText(R.id.widget_schedule_empty, ScheduleWidgetPresentation.dayEmptyCopy)
-            } else {
-                views.setViewVisibility(R.id.widget_schedule_empty, View.GONE)
-                cards.forEach { card ->
-                    val row = RemoteViews(context.packageName, R.layout.schedule_day_class_card)
-                    row.setTextViewText(R.id.widget_day_class_name, card.courseName)
-                    val classroom = card.classroom.ifBlank { "地点未排" }
-                    row.setTextViewText(
-                        R.id.widget_day_class_meta,
-                        "${card.timeLabel}  ${card.sectionLabel}  $classroom",
-                    )
-                    row.setInt(
-                        R.id.widget_day_class_root,
-                        "setBackgroundResource",
-                        ScheduleWidgetPresentation.cardBackgrounds[card.backgroundResIndex],
-                    )
-                    views.addView(R.id.widget_day_cards, row)
-                }
-            }
+            bindClassCards(context.packageName, views, cards, emptyCopy)
             views.setOnClickPendingIntent(R.id.widget_schedule_root, pendingOpenApp(context, 1102 + appWidgetId))
             views.setOnClickPendingIntent(
                 R.id.widget_day_prev,
@@ -130,6 +119,36 @@ class ScheduleWeekWidgetProvider : AppWidgetProvider() {
             )
             manager.updateAppWidget(appWidgetId, views)
         }
+    }
+}
+
+private fun bindClassCards(
+    packageName: String,
+    views: RemoteViews,
+    cards: List<ScheduleWidgetPresentation.DayCard>,
+    emptyCopy: String,
+) {
+    views.removeAllViews(R.id.widget_day_cards)
+    if (cards.isEmpty()) {
+        views.setViewVisibility(R.id.widget_schedule_empty, View.VISIBLE)
+        views.setTextViewText(R.id.widget_schedule_empty, emptyCopy)
+        return
+    }
+    views.setViewVisibility(R.id.widget_schedule_empty, View.GONE)
+    cards.forEach { card ->
+        val item = RemoteViews(packageName, R.layout.schedule_day_class_card)
+        item.setTextViewText(R.id.widget_day_class_name, card.courseName)
+        val classroom = card.classroom.ifBlank { "地点未排" }
+        item.setTextViewText(
+            R.id.widget_day_class_meta,
+            "${card.timeLabel}  ${card.sectionLabel}  $classroom",
+        )
+        item.setInt(
+            R.id.widget_day_class_root,
+            "setBackgroundResource",
+            ScheduleWidgetPresentation.cardBackgrounds[card.backgroundResIndex],
+        )
+        views.addView(R.id.widget_day_cards, item)
     }
 }
 

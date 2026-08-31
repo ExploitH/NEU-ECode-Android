@@ -42,23 +42,38 @@ object ScheduleWidgetPresentation {
         }
     }
 
+    fun todayCards(
+        document: JwxtScheduleDocument?,
+        actualWeek: Int?,
+        todayWeekday: Int,
+        nowMinutes: Int = currentMinutesOfDay(),
+    ): List<DayCard> {
+        if (document == null || actualWeek == null) return emptyList()
+        return remainingTodayItems(
+            items = SchedulePresentation.todayItems(document, todayWeekday, actualWeek),
+            nowMinutes = nowMinutes,
+        ).map(::toDayCard)
+    }
+
     fun dayCards(
         document: JwxtScheduleDocument?,
         week: Int?,
         weekday: Int,
     ): List<DayCard> {
         if (document == null || week == null) return emptyList()
-        return SchedulePresentation.todayItems(document, weekday, week).map { item ->
-            DayCard(
-                courseName = item.courseName,
-                classroom = item.classroom,
-                timeLabel = "${item.startTime}-${item.endTime}",
-                sectionLabel = "第${item.startSection}-${item.endSection}节",
-                backgroundColor = pastelColor(item.eventId),
-                backgroundResIndex = cardBackgroundIndex(item.eventId),
-                courseKey = item.eventId,
-            )
-        }
+        return SchedulePresentation.todayItems(document, weekday, week).map(::toDayCard)
+    }
+
+    private fun toDayCard(item: ScheduleTodayItem): DayCard {
+        return DayCard(
+            courseName = item.courseName,
+            classroom = item.classroom,
+            timeLabel = "${item.startTime}-${item.endTime}",
+            sectionLabel = "第${item.startSection}-${item.endSection}节",
+            backgroundColor = pastelColor(item.eventId),
+            backgroundResIndex = cardBackgroundIndex(item.eventId),
+            courseKey = item.eventId,
+        )
     }
 
     fun pastelColor(courseKey: String): Int {
@@ -119,9 +134,10 @@ object ScheduleWidgetPresentation {
             .minOrNull()
     }
 
-    fun todaySubtitle(actualWeek: Int?, todayWeekday: Int): String {
+    fun todaySubtitle(actualWeek: Int?, todayWeekday: Int, epochDay: Long): String {
         val day = weekdayNames.getOrNull(todayWeekday - 1) ?: "?"
-        return if (actualWeek == null) "开学日前 · 周$day" else "第${actualWeek}周 · 周$day"
+        val date = ScheduleDayPagerPolicy.dateLabel(epochDay)
+        return if (actualWeek == null) "开学日前 · $date 周$day" else "第${actualWeek}周 · $date 周$day"
     }
 
     fun weekDayCounts(document: JwxtScheduleDocument?, week: Int): List<Int> {

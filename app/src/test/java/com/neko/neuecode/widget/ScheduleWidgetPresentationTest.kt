@@ -202,6 +202,51 @@ class ScheduleWidgetPresentationTest {
     }
 
     @Test
+    fun todaySubtitle_includesCalendarDate() {
+        assertEquals(
+            "第2周 · 8月27日 周四",
+            ScheduleWidgetPresentation.todaySubtitle(
+                actualWeek = 2,
+                todayWeekday = 4,
+                epochDay = 20_692L,
+            ),
+        )
+        assertEquals(
+            "开学日前 · 8月27日 周四",
+            ScheduleWidgetPresentation.todaySubtitle(
+                actualWeek = null,
+                todayWeekday = 4,
+                epochDay = 20_692L,
+            ),
+        )
+    }
+
+    @Test
+    fun todayCards_hideFinishedClassesAndKeepCurrentAndUpcoming() {
+        val cards = ScheduleWidgetPresentation.todayCards(
+            document = threeClassThursday(),
+            actualWeek = 2,
+            todayWeekday = 4,
+            nowMinutes = minutes("10:00"),
+        )
+        assertEquals(2, cards.size)
+        assertEquals(listOf("正在上的课", "将要上的课"), cards.map { it.courseName })
+        assertEquals("10:00-11:40", cards.first().timeLabel)
+        assertTrue(cards.first().backgroundColor != 0)
+    }
+
+    @Test
+    fun todayCards_emptyWhenFinished() {
+        val cards = ScheduleWidgetPresentation.todayCards(
+            document = document,
+            actualWeek = 2,
+            todayWeekday = 4,
+            nowMinutes = minutes("12:10"),
+        )
+        assertTrue(cards.isEmpty())
+    }
+
+    @Test
     fun dayCards_emptyCopyWhenThatWeekdayHasNoEvents() {
         val cards = ScheduleWidgetPresentation.dayCards(
             document = document,

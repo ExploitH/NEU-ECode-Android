@@ -17,13 +17,22 @@ object ScheduleDayPagerPolicy {
 
     fun selectedEpochDay(todayEpochDay: Long, offset: Int): Long = todayEpochDay + offset
 
-    fun title(offset: Int, weekday: Int, week: Int?): String {
+    fun dateLabel(epochDay: Long): String {
+        val utc = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        utc.timeInMillis = epochDay * 86_400_000L
+        val month = utc.get(java.util.Calendar.MONTH) + 1
+        val day = utc.get(java.util.Calendar.DAY_OF_MONTH)
+        return "${month}月${day}日"
+    }
+
+    fun title(offset: Int, weekday: Int, week: Int?, epochDay: Long): String {
         val day = weekdayNames.getOrNull(weekday - 1) ?: "?"
+        val date = dateLabel(epochDay)
         return when (offset) {
-            0 -> "今日 · 周$day"
-            -1 -> "昨天 · 周$day"
-            1 -> "明天 · 周$day"
-            else -> if (week == null) "周$day" else "第${week}周 · 周$day"
+            0 -> "今日 · $date 周$day"
+            -1 -> "昨天 · $date 周$day"
+            1 -> "明天 · $date 周$day"
+            else -> if (week == null) "$date 周$day" else "第${week}周 · $date 周$day"
         }
     }
 
