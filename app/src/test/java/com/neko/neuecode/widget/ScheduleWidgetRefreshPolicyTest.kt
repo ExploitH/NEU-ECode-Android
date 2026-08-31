@@ -54,5 +54,10 @@ class ScheduleWidgetRefreshPolicyTest {
                 ScheduleWidgetRefreshPolicy.midnightAction,
             ),
         )
+        assertTrue(
+            ScheduleWidgetRefreshPolicy.acceptsRefreshAction(
+                ScheduleWidgetRefreshPolicy.classBoundaryAction,
+            ),
+        )
     }
 }

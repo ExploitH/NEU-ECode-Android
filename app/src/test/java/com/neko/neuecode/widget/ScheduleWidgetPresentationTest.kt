@@ -63,8 +63,127 @@ class ScheduleWidgetPresentationTest {
             document = document,
             actualWeek = 2,
             todayWeekday = 4,
+            nowMinutes = minutes("09:00"),
         )
         assertEquals(1, lines.size)
         assertTrue(lines.single().contains("运筹学"))
+    }
+
+    @Test
+    fun todayLines_hidesFinishedClassesAndKeepsCurrentAndUpcoming() {
+        val lines = ScheduleWidgetPresentation.todayLines(
+            document = threeClassThursday(),
+            actualWeek = 2,
+            todayWeekday = 4,
+            nowMinutes = minutes("10:00"),
+        )
+        assertEquals(2, lines.size)
+        assertTrue(lines[0].contains("正在上的课"))
+        assertTrue(lines[1].contains("将要上的课"))
+        assertTrue(lines.none { it.contains("已上完的课") })
+    }
+
+    @Test
+    fun todayLines_showsNoClassCopyWhenDayHasNoEvents() {
+        val lines = ScheduleWidgetPresentation.todayLines(
+            document = document,
+            actualWeek = 2,
+            todayWeekday = 1,
+            nowMinutes = minutes("12:00"),
+        )
+        assertEquals(listOf("今日无课"), lines)
+    }
+
+    @Test
+    fun todayLines_showsFinishedCopyAfterLastClassEnds() {
+        val lines = ScheduleWidgetPresentation.todayLines(
+            document = document,
+            actualWeek = 2,
+            todayWeekday = 4,
+            nowMinutes = minutes("12:10"),
+        )
+        assertEquals(listOf("今日课程已上完"), lines)
+    }
+
+    @Test
+    fun nextRefreshMinutes_isTheSoonestRemainingBoundary() {
+        val next = ScheduleWidgetPresentation.nextRefreshMinutes(
+            items = listOf(
+                todayItem("已上完的课", "08:00", "09:40"),
+                todayItem("正在上的课", "10:00", "11:40"),
+                todayItem("将要上的课", "14:00", "15:40"),
+            ),
+            nowMinutes = minutes("10:30"),
+        )
+        assertEquals(minutes("11:40"), next)
+    }
+
+    private fun minutes(hhmm: String): Int {
+        val parts = hhmm.split(":")
+        return parts[0].toInt() * 60 + parts[1].toInt()
+    }
+
+    private fun todayItem(name: String, start: String, end: String) = com.neko.neuecode.domain.jwxt.ScheduleTodayItem(
+        eventId = name,
+        courseName = name,
+        classroom = "A101",
+        teachers = emptyList(),
+        startTime = start,
+        endTime = end,
+        startSection = 1,
+        endSection = 2,
+    )
+
+    private fun threeClassThursday() = JwxtScheduleNormalizer.normalize(
+        account = "20240001",
+        termCode = "2025-2026-2",
+        termName = "春",
+        campusCode = "01",
+        campusName = "南湖",
+        sections = emptyList(),
+        schedule = JsonParser.parseString(
+            """
+            {
+              "arrangedList": [
+                ${arranged("已上完的课", "08:00", "09:40", 1, 2)},
+                ${arranged("正在上的课", "10:00", "11:40", 3, 4)},
+                ${arranged("将要上的课", "14:00", "15:40", 5, 6)}
+              ],
+              "notArrangeList": [],
+              "practiceList": []
+            }
+            """.trimIndent(),
+        ).asJsonObject,
+        generatedAt = "2026-08-27T00:00:00Z",
+    )
+
+    private fun arranged(
+        name: String,
+        begin: String,
+        end: String,
+        beginSection: Int,
+        endSection: Int,
+    ): String {
+        return """
+            {
+              "courseCode": "$name",
+              "courseName": "$name",
+              "teachClassId": "$name",
+              "courseSerialNo": "$name",
+              "teachClassName": "信息2401",
+              "teachingTarget": "信息2401",
+              "credit": "3.0",
+              "campusName": "南湖",
+              "weeksAndTeachers": "2周[理论]/张川[主讲]",
+              "beginTime": "$begin",
+              "endTime": "$end",
+              "beginSection": $beginSection,
+              "endSection": $endSection,
+              "placeName": "1号B206",
+              "dayOfWeek": 4,
+              "titleDetail": ["$name"],
+              "titleWeekTeacherClassroomDetail": ["2周 张川 1号B206"]
+            }
+        """.trimIndent()
     }
 }

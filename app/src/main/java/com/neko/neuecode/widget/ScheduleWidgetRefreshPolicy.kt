@@ -5,6 +5,7 @@ import java.util.TimeZone
 
 object ScheduleWidgetRefreshPolicy {
     const val midnightAction = "com.neko.neuecode.widget.ACTION_LOCAL_MIDNIGHT"
+    const val classBoundaryAction = "com.neko.neuecode.widget.ACTION_CLASS_BOUNDARY"
 
     val clockActions: Set<String> = setOf(
         "android.intent.action.DATE_CHANGED",
@@ -18,7 +19,7 @@ object ScheduleWidgetRefreshPolicy {
     fun acceptsClockAction(action: String?): Boolean = action in clockActions
 
     fun acceptsRefreshAction(action: String?): Boolean {
-        return acceptsClockAction(action) || action == midnightAction
+        return acceptsClockAction(action) || action == midnightAction || action == classBoundaryAction
     }
 
     fun nextLocalMidnightMillis(

@@ -17,6 +17,7 @@ class ScheduleWidgetRefresher @Inject constructor(
     fun refresh() {
         Timber.d("Refreshing schedule widgets from local cache")
         ScheduleWidgetUpdater.updateAll(appContext)
+        ScheduleWidgetMidnightAlarm.scheduleNext(appContext)
     }
 }
 
