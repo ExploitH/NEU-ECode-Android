@@ -69,8 +69,12 @@ class SessionRefreshWorker @AssistedInject constructor(
                 }
                 is com.neko.neuecode.domain.model.Result.Error -> {
                     Timber.w(result.exception, "Session refresh failed: ${result.message}")
-                    if (result.message?.contains("需要重新登录") == true) {
-                        Timber.w("Session expired, user needs to re-login")
+                    if (
+                        result.message?.contains("需要重新登录") == true ||
+                        result.message?.contains("需要短信") == true ||
+                        result.exception is com.neko.neuecode.data.repository.AuthRepository.NeedSmsVerificationException
+                    ) {
+                        Timber.w("Session expired or SMS required; stop automatic retry")
                         Result.failure()
                     } else {
                         Result.retry()

@@ -329,9 +329,9 @@ fun NativeLoginScreen(
                             OutlinedButton(
                                 onClick = {
                                     focusManager.clearFocus()
-                                    viewModel.login(username, password, rememberUsername, longTermLogin)
+                                    viewModel.resendSmsCode()
                                 },
-                                enabled = username.isNotBlank() && password.isNotBlank() && agreementAccepted && uiState !is LoginUiState.Loading,
+                                enabled = uiState !is LoginUiState.Loading,
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("重新发送验证码")

@@ -79,6 +79,18 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    fun resendSmsCode() {
+        val awaiting = _uiState.value as? LoginUiState.AwaitingSms
+        if (awaiting == null) {
+            _uiState.value = LoginUiState.Error("当前没有待验证的短信登录")
+            return
+        }
+        viewModelScope.launch {
+            authRepository.sendSmsCode(awaiting.pending)
+            _uiState.value = awaiting.copy(message = "验证码已重新发送，请查收后填写")
+        }
+    }
+
     private fun handleLoginResult(result: Result<User>) {
         when (result) {
             is Result.Success -> _uiState.value = LoginUiState.Success(result.data)

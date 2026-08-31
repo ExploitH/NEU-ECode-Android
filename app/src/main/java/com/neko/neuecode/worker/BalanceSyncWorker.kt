@@ -90,7 +90,14 @@ class BalanceSyncWorker @AssistedInject constructor(
                 }
                 is com.neko.neuecode.domain.model.Result.Error -> {
                     Timber.w(result.exception, "Balance sync failed: ${result.message}")
-                    Result.retry()
+                    if (
+                        result.message?.contains("需要短信") == true ||
+                        result.exception is com.neko.neuecode.data.repository.AuthRepository.NeedSmsVerificationException
+                    ) {
+                        Result.failure()
+                    } else {
+                        Result.retry()
+                    }
                 }
                 else -> {
                     Timber.w("Balance sync returned unexpected result")

@@ -228,16 +228,15 @@ class AuthRepository @Inject constructor(
         longTermLogin: Boolean
     ): Result<User> {
         if (loginData.loginCode == "3" && !loginData.loginResult.isNullOrBlank()) {
-            Timber.i("login_code=3 requires SMS verification; sending code")
+            Timber.i("login_code=3 requires SMS verification; do not auto-send or retry")
             val pending = SmsVerificationRequired(username, password, loginData.loginResult, imei, rememberUsername, longTermLogin)
-            sendSmsCode(pending)
-            return Result.Error(NeedSmsVerificationException(pending), "需要短信验证码，已尝试发送")
+            return Result.Error(NeedSmsVerificationException(pending), "需要短信验证码，请在登录页完成验证")
         }
 
         return completeLogin(loginData, username, password, rememberUsername, longTermLogin)
     }
 
-    private suspend fun sendSmsCode(pending: SmsVerificationRequired) {
+    suspend fun sendSmsCode(pending: SmsVerificationRequired) {
         try {
             val response = personalApi.appLoginSmsSend(
                 content = encryptedFormBody(

@@ -9,6 +9,7 @@ import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 import com.neko.neuecode.R
+import com.neko.neuecode.domain.ecode.PayCodeFailure
 import com.neko.neuecode.domain.ecode.PayCodeParseResult
 import com.neko.neuecode.domain.model.Result
 import com.neko.neuecode.ui.screen.paycode.PayCodeQrEncoder
@@ -133,10 +134,17 @@ class ECodeWidgetProvider : AppWidgetProvider() {
                             }
                         }
                         is PayCodeParseResult.Failure -> {
-                            ECodeWidgetStore.saveStatus(
-                                appContext,
-                                ECodeWidgetPresentation.qrStatus(false, null),
-                            )
+                            if (result.reason == PayCodeFailure.NeedSms) {
+                                ECodeWidgetStore.saveStatus(
+                                    appContext,
+                                    "付款码需要短信验证，已停止自动刷新",
+                                )
+                            } else {
+                                ECodeWidgetStore.saveStatus(
+                                    appContext,
+                                    ECodeWidgetPresentation.qrStatus(false, null),
+                                )
+                            }
                         }
                     }
                     render(appContext, widgetIds, loading = false)
@@ -201,7 +209,6 @@ class ECodeWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         render(context.applicationContext, appWidgetIds, loading = false)
-        refreshQrAsync(context, null)
     }
 
     override fun onReceive(context: Context, intent: Intent) {

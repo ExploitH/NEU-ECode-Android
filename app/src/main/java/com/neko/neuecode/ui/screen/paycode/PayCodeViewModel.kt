@@ -13,8 +13,10 @@ import com.neko.neuecode.widget.ECodeWidgetProvider
 import com.neko.neuecode.widget.ECodeWidgetStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,17 +45,26 @@ class PayCodeViewModel @Inject constructor(
         PayCodeUiState(widgetShowBalance = ECodeWidgetStore.load(application).showBalance),
     )
     val uiState: StateFlow<PayCodeUiState> = _uiState.asStateFlow()
+    private var autoFetchJob: Job? = null
 
     init {
-        refresh()
+        refresh(userInitiated = true)
     }
 
     fun refresh() {
+        refresh(userInitiated = true)
+    }
+
+    private fun refresh(userInitiated: Boolean) {
         if (!PayCodeRefreshPolicy.canRefreshPayCode(
                 awaitingSms = _uiState.value.awaitingSms,
                 isRefreshing = _uiState.value.home.status == PayCodeHomeStatus.Loading,
             )
         ) {
+            return
+        }
+        if (!userInitiated && !PayCodeRefreshPolicy.shouldContinueAutoFetch(_uiState.value.awaitingSms)) {
+            stopAutoFetch()
             return
         }
         viewModelScope.launch {
@@ -85,14 +96,41 @@ class PayCodeViewModel @Inject constructor(
                     }
                 }
                 val payCode = payCodeJob.await()
+                val awaitingSms = payCode is PayCodeParseResult.Failure &&
+                    payCode.reason == PayCodeFailure.NeedSms
                 _uiState.value = _uiState.value.copy(
                     home = PayCodeHomePresentation.from(payCode),
-                    awaitingSms = payCode is PayCodeParseResult.Failure &&
-                        payCode.reason == PayCodeFailure.NeedSms,
+                    awaitingSms = awaitingSms,
                 )
                 persistWidgetQr(payCode)
+                scheduleAutoFetch(payCode, awaitingSms)
             }
         }
+    }
+
+    private fun scheduleAutoFetch(result: PayCodeParseResult, awaitingSms: Boolean) {
+        autoFetchJob?.cancel()
+        autoFetchJob = null
+        if (!PayCodeRefreshPolicy.shouldContinueAutoFetch(awaitingSms)) {
+            return
+        }
+        val delayMs = PayCodeRefreshPolicy.nextAutoFetchDelayMs(
+            success = result is PayCodeParseResult.Success,
+            ttlSeconds = (result as? PayCodeParseResult.Success)?.code?.ttlSeconds,
+            awaitingSms = awaitingSms,
+        ) ?: return
+        autoFetchJob = viewModelScope.launch {
+            delay(delayMs)
+            if (!PayCodeRefreshPolicy.shouldContinueAutoFetch(_uiState.value.awaitingSms)) {
+                return@launch
+            }
+            refresh(userInitiated = false)
+        }
+    }
+
+    private fun stopAutoFetch() {
+        autoFetchJob?.cancel()
+        autoFetchJob = null
     }
 
     fun setWidgetShowBalance(show: Boolean) {
