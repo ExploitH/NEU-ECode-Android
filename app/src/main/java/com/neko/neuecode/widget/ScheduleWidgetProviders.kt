@@ -11,6 +11,7 @@ import com.neko.neuecode.R
 import com.neko.neuecode.data.local.schedule.JwxtScheduleCacheStore
 import com.neko.neuecode.data.local.schedule.PrefsScheduleSettingsStore
 import com.neko.neuecode.domain.jwxt.ScheduleWeekClock
+import com.neko.neuecode.ui.navigation.MainDestinations
 
 class ScheduleTodayWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -72,6 +73,7 @@ class ScheduleWeekWidgetProvider : AppWidgetProvider() {
 private fun pendingOpenApp(context: Context, requestCode: Int): PendingIntent {
     val intent = Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        putExtra(MainActivity.EXTRA_START_ROUTE, MainDestinations.widgetStartRoute)
     }
     return PendingIntent.getActivity(
         context,

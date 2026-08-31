@@ -52,6 +52,7 @@ fun MainAppScreen(
     cookieJar: PersistentCookieJar,
     userPreferences: UserPreferences,
     authRepository: AuthRepository,
+    initialStartRoute: String = MainDestinations.PAY,
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -86,7 +87,7 @@ fun MainAppScreen(
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = MainDestinations.PAY,
+            startDestination = MainDestinations.resolveStartRoute(initialStartRoute),
             modifier = Modifier.padding(paddingValues),
             enterTransition = {
                 fadeIn(tween(220)) + slideIntoContainer(

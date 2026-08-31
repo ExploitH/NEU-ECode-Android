@@ -40,9 +40,11 @@ import com.neko.neuecode.domain.model.SessionState
 import com.neko.neuecode.ui.components.BrandLoadingMark
 import com.neko.neuecode.ui.screen.login.NativeLoginScreen
 import com.neko.neuecode.ui.theme.NeuECodeTheme
+import com.neko.neuecode.ui.navigation.MainDestinations
 import com.neko.neuecode.ui.update.AppUpdateDialog
 import com.neko.neuecode.ui.update.UpdateVerificationActivity
 import com.neko.neuecode.util.AppUpdateInstaller
+import com.neko.neuecode.widget.ScheduleWidgetRefresher
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -69,11 +71,26 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appUpdateInstaller: AppUpdateInstaller
 
+    @Inject
+    lateinit var scheduleWidgetRefresher: ScheduleWidgetRefresher
+
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
 
         Timber.d("MainActivity created")
         enableEdgeToEdge()
+
+        val requestedStartRoute = intent.getStringExtra(EXTRA_START_ROUTE)
+        val initialStartRoute = MainDestinations.resolveStartRoute(requestedStartRoute)
+        val scheduleWidgetLaunch = MainDestinations.shouldRefreshScheduleWidgets(requestedStartRoute)
+        Timber.d(
+            "MainActivity initial route=%s scheduleWidgetLaunch=%s",
+            initialStartRoute,
+            scheduleWidgetLaunch,
+        )
+        if (savedInstanceState == null && scheduleWidgetLaunch) {
+            scheduleWidgetRefresher.refresh()
+        }
 
         setContent {
             NeuECodeTheme {
@@ -86,11 +103,16 @@ class MainActivity : ComponentActivity() {
                         authRepository = authRepository,
                         userPreferences = userPreferences,
                         appUpdateRepository = appUpdateRepository,
-                        appUpdateInstaller = appUpdateInstaller
+                        appUpdateInstaller = appUpdateInstaller,
+                        initialStartRoute = initialStartRoute,
                     )
                 }
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_START_ROUTE = "com.neko.neuecode.extra.START_ROUTE"
     }
 }
 
@@ -100,7 +122,8 @@ fun MainNavigation(
     authRepository: AuthRepository,
     userPreferences: UserPreferences,
     appUpdateRepository: AppUpdateRepository,
-    appUpdateInstaller: AppUpdateInstaller
+    appUpdateInstaller: AppUpdateInstaller,
+    initialStartRoute: String,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -207,6 +230,7 @@ fun MainNavigation(
                     cookieJar = cookieJar,
                     userPreferences = userPreferences,
                     authRepository = authRepository,
+                    initialStartRoute = initialStartRoute,
                     onLogout = {
                         scope.launch {
                             authRepository.logout()

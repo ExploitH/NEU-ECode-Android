@@ -24,6 +24,17 @@ object MainDestinations {
     /** Route used when protocol pay-code fetch fails and user taps 「打开付款码」. */
     const val openPayCodeRoute: String = ECODE_WEBVIEW
 
+    /** Start route requested by both schedule home-screen widgets. */
+    const val widgetStartRoute: String = SCHEDULE
+
+    fun resolveStartRoute(requestedRoute: String?): String {
+        return if (requestedRoute == widgetStartRoute) SCHEDULE else PAY
+    }
+
+    fun shouldRefreshScheduleWidgets(requestedRoute: String?): Boolean {
+        return requestedRoute == widgetStartRoute
+    }
+
     fun isBottomBar(route: String): Boolean = route in bottomBar
     fun isSecondary(route: String): Boolean = route in secondary
 }

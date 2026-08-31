@@ -55,4 +55,15 @@ class MainDestinationsTest {
         assertFalse(MainDestinations.isSecondary(MainDestinations.SCHEDULE))
         assertFalse(MainDestinations.isSecondary(MainDestinations.ME))
     }
+
+    @Test
+    fun scheduleWidgetLaunch_opensScheduleWhileNormalLaunchStaysOnPay() {
+        assertEquals(MainDestinations.SCHEDULE, MainDestinations.widgetStartRoute)
+        assertEquals(MainDestinations.SCHEDULE, MainDestinations.resolveStartRoute("schedule"))
+        assertEquals(MainDestinations.PAY, MainDestinations.resolveStartRoute(null))
+        assertEquals(MainDestinations.PAY, MainDestinations.resolveStartRoute("unexpected"))
+        assertTrue(MainDestinations.shouldRefreshScheduleWidgets("schedule"))
+        assertFalse(MainDestinations.shouldRefreshScheduleWidgets(null))
+        assertFalse(MainDestinations.shouldRefreshScheduleWidgets("unexpected"))
+    }
 }

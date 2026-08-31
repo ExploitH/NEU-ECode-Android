@@ -54,6 +54,12 @@ class NeuECodeApplication : Application(), Configuration.Provider {
             
             // Schedule balance sync (every 6 hours)
             com.neko.neuecode.worker.BalanceSyncWorker.schedule(this)
+
+            // Re-render cached schedule widgets every 6 hours as a local-only fallback.
+            com.neko.neuecode.widget.ScheduleWidgetRefreshWorker.schedule(this)
+
+            // Refresh at the next local date boundary without exact-alarm permission.
+            com.neko.neuecode.widget.ScheduleWidgetMidnightAlarm.scheduleNext(this)
             
             Timber.i("Background tasks scheduled successfully")
         } catch (e: Exception) {

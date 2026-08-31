@@ -16,6 +16,7 @@ import com.neko.neuecode.domain.jwxt.ScheduleWeekClock
 import com.neko.neuecode.domain.jwxt.ScheduleLoginInitHint
 import com.neko.neuecode.domain.jwxt.ScheduleSyncProgress
 import com.neko.neuecode.domain.model.Result
+import com.neko.neuecode.widget.ScheduleWidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -57,6 +58,7 @@ class JwxtScheduleViewModel @Inject constructor(
     private val cacheStore: JwxtScheduleCacheStore,
     private val settingsStore: ScheduleSettingsStore,
     private val intranetProbe: CampusIntranetProbe,
+    private val widgetRefresher: ScheduleWidgetRefresher,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(JwxtScheduleUiState())
@@ -116,6 +118,7 @@ class JwxtScheduleViewModel @Inject constructor(
             when (result) {
                 is Result.Success -> {
                     cacheStore.save(result.data)
+                    widgetRefresher.refresh()
                     val today = ScheduleWeekClock.todayEpochDay()
                     val weekday = ScheduleWeekClock.todayWeekday()
                     val actualWeek = actualWeekOf(_uiState.value.termStartEpochDay, today)
@@ -241,6 +244,7 @@ class JwxtScheduleViewModel @Inject constructor(
             termStartEpochDay = termStartEpochDay,
         )
         settingsStore.save(settings)
+        widgetRefresher.refresh()
         val today = ScheduleWeekClock.todayEpochDay()
         val weekday = ScheduleWeekClock.todayWeekday()
         val actualWeek = actualWeekOf(termStartEpochDay, today)

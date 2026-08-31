@@ -107,6 +107,16 @@
                 android:resource="@xml/schedule_week_widget_info" />
         </receiver>
 
+        <receiver
+            android:name=".widget.ScheduleWidgetClockReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".data.vpn.StudentVpnService"
             android:exported="false"
