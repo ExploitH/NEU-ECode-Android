@@ -19,6 +19,22 @@ class InMemoryScheduleSettingsStoreTest {
         val loaded = store.load()
         assertEquals("2025-2026-2", loaded.defaultTermCode)
         assertEquals(20_150L, loaded.termStartEpochDay)
+        assertEquals(WeekStartDay.SUNDAY, loaded.weekStartDay)
+    }
+
+    @Test
+    fun save_roundTripsWeekStartMonday() {
+        val store = InMemoryScheduleSettingsStore()
+        store.save(
+            ScheduleSettings(
+                defaultTermCode = "2025-2026-2",
+                termStartEpochDay = 20_150L,
+                weekStartDay = WeekStartDay.MONDAY,
+            ),
+        )
+
+        val loaded = store.load()
+        assertEquals(WeekStartDay.MONDAY, loaded.weekStartDay)
     }
 
     @Test
@@ -27,5 +43,6 @@ class InMemoryScheduleSettingsStoreTest {
         val loaded = store.load()
         assertNull(loaded.defaultTermCode)
         assertNull(loaded.termStartEpochDay)
+        assertEquals(WeekStartDay.SUNDAY, loaded.weekStartDay)
     }
 }

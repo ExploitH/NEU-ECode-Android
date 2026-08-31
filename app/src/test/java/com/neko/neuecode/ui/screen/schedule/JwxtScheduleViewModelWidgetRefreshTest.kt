@@ -3,6 +3,7 @@ package com.neko.neuecode.ui.screen.schedule
 import com.neko.neuecode.data.local.schedule.JwxtScheduleCacheStore
 import com.neko.neuecode.data.local.schedule.ScheduleSettings
 import com.neko.neuecode.data.local.schedule.ScheduleSettingsStore
+import com.neko.neuecode.data.local.schedule.WeekStartDay
 import com.neko.neuecode.data.remote.campus.CampusIntranetProbe
 import com.neko.neuecode.data.repository.JwxtScheduleRepository
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
@@ -43,6 +44,7 @@ class JwxtScheduleViewModelWidgetRefreshTest {
         viewModel.saveSettings(
             defaultTermCode = "2026-2027-1",
             termStartEpochDay = 20_700L,
+            weekStartDay = WeekStartDay.MONDAY,
         )
 
         verify(exactly = 1) {
@@ -50,6 +52,7 @@ class JwxtScheduleViewModelWidgetRefreshTest {
                 ScheduleSettings(
                     defaultTermCode = "2026-2027-1",
                     termStartEpochDay = 20_700L,
+                    weekStartDay = WeekStartDay.MONDAY,
                 ),
             )
         }

@@ -17,12 +17,14 @@ class PrefsScheduleSettingsStore @Inject constructor(
         return ScheduleSettings(
             defaultTermCode = term,
             termStartEpochDay = start,
+            weekStartDay = WeekStartDay.fromStored(prefs.getString(KEY_WEEK_START, null)),
         )
     }
 
     override fun save(settings: ScheduleSettings) {
         prefs.edit()
             .putString(KEY_TERM, settings.defaultTermCode)
+            .putString(KEY_WEEK_START, settings.weekStartDay.storedValue)
             .apply {
                 if (settings.termStartEpochDay == null) remove(KEY_START)
                 else putLong(KEY_START, settings.termStartEpochDay)
@@ -34,5 +36,6 @@ class PrefsScheduleSettingsStore @Inject constructor(
         private const val PREFS = "jwxt_schedule_settings"
         private const val KEY_TERM = "default_term_code"
         private const val KEY_START = "term_start_epoch_day"
+        private const val KEY_WEEK_START = "week_start_day"
     }
 }

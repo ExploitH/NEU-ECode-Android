@@ -38,16 +38,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.neko.neuecode.data.local.schedule.WeekStartDay
 import com.neko.neuecode.domain.jwxt.CourseColorHasher
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.JwxtSection
 import com.neko.neuecode.domain.jwxt.ScheduleGridCell
 import com.neko.neuecode.domain.jwxt.SchedulePresentation
+import com.neko.neuecode.domain.jwxt.ScheduleWeekLayout
 
-private val weekdayLabels = listOf("一", "二", "三", "四", "五", "六", "日")
 private const val WEEKDAY_COUNT = 7
 private const val SECTION_COUNT = 12
-private val headerRowHeight = 48.dp
+private val headerRowHeight = 56.dp
 private val timeColumnWidth = 44.dp
 private val slotHeight = 56.dp
 private val gap = 4.dp
@@ -59,11 +60,16 @@ fun WeekGridPane(
     todayWeekday: Int,
     onCellClick: (ScheduleGridCell) -> Unit,
     modifier: Modifier = Modifier,
+    weekStartDay: WeekStartDay = WeekStartDay.SUNDAY,
+    termStartEpochDay: Long? = null,
 ) {
     WeekGridPane(
         cells = SchedulePresentation.cellsForWeek(document, week),
         sections = document.sections,
         todayWeekday = todayWeekday,
+        weekStartDay = weekStartDay,
+        termStartEpochDay = termStartEpochDay,
+        week = week,
         onCellClick = onCellClick,
         modifier = modifier,
     )
@@ -76,15 +82,21 @@ fun WeekGridPane(
     todayWeekday: Int,
     onCellClick: (ScheduleGridCell) -> Unit,
     modifier: Modifier = Modifier,
+    weekStartDay: WeekStartDay = WeekStartDay.SUNDAY,
+    termStartEpochDay: Long? = null,
+    week: Int = 1,
 ) {
     val sectionTimes = sections.associate { it.number to it.name }
     val maxSection = sections.maxOfOrNull { it.number }?.coerceAtLeast(SECTION_COUNT) ?: SECTION_COUNT
     val colors = MaterialTheme.colorScheme
     val rowH = slotHeight + gap
-    val counts = weekdayLabels.indices.associate { index ->
-        val weekday = index + 1
-        weekday to cells.count { it.weekday == weekday }
-    }
+    val counts = cells.groupingBy { it.weekday }.eachCount()
+    val headers = ScheduleWeekLayout.headers(
+        weekStartDay = weekStartDay,
+        termStartEpochDay = termStartEpochDay,
+        week = week,
+        courseCounts = counts,
+    )
 
     Box(
         modifier = modifier
@@ -107,26 +119,33 @@ fun WeekGridPane(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Spacer(modifier = Modifier.width(timeColumnWidth))
-                    weekdayLabels.forEachIndexed { index, label ->
-                        val weekday = index + 1
-                        val highlight = weekday == todayWeekday
-                        val count = counts[weekday] ?: 0
+                    headers.forEach { header ->
+                        val highlight = header.weekday == todayWeekday
+                        val count = header.courseCount
                         Column(
                             modifier = Modifier
                                 .width(dayColumnWidth)
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(if (highlight) colors.primaryContainer else colors.surface)
-                                .padding(vertical = 4.dp),
+                                .padding(vertical = 2.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
                             Text(
-                                text = "周$label",
+                                text = "周${header.label}",
                                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                                 color = if (highlight) colors.onPrimaryContainer else colors.onSurface,
                                 maxLines = 1,
                             )
+                            header.dateLabel?.let { date ->
+                                Text(
+                                    text = date,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = if (highlight) colors.onPrimaryContainer.copy(alpha = 0.85f) else colors.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
                             Text(
                                 text = if (count == 0) "无课" else "${count}门",
                                 style = MaterialTheme.typography.labelSmall,
@@ -188,7 +207,8 @@ fun WeekGridPane(
                         val start = cell.startSection.coerceIn(1, maxSection)
                         val end = cell.endSection.coerceIn(start, maxSection)
                         val span = (end - start + 1).coerceAtLeast(1)
-                        val cardX = timeColumnWidth + gap + (dayColumnWidth + gap) * (cell.weekday - 1)
+                        val cardX = timeColumnWidth + gap + (dayColumnWidth + gap) *
+                            ScheduleWeekLayout.columnIndex(cell.weekday, weekStartDay)
                         val cardY = rowH * (start - 1)
                         val cardH = rowH * span - gap
                         val hue = CourseColorHasher.hue(cell.courseKey)

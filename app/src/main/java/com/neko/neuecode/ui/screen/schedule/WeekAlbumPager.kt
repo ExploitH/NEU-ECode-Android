@@ -14,6 +14,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.neko.neuecode.data.local.schedule.WeekStartDay
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.ScheduleGridCell
 import com.neko.neuecode.domain.jwxt.ScheduleTodayHighlight
@@ -30,6 +31,8 @@ fun WeekAlbumPager(
     maxWeek: Int,
     actualWeek: Int?,
     todayWeekday: Int,
+    weekStartDay: WeekStartDay = WeekStartDay.SUNDAY,
+    termStartEpochDay: Long? = null,
     pagerState: PagerState,
     bouncePx: Float,
     onWeekSettled: (Int) -> Unit,
@@ -66,6 +69,8 @@ fun WeekAlbumPager(
                 actualWeek = actualWeek,
                 todayWeekday = todayWeekday,
             ),
+            weekStartDay = weekStartDay,
+            termStartEpochDay = termStartEpochDay,
             onCellClick = onCellClick,
             modifier = Modifier.fillMaxSize(),
         )

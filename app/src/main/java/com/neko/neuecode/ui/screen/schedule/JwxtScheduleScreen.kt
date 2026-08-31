@@ -71,6 +71,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.neko.neuecode.data.local.schedule.WeekStartDay
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
 import com.neko.neuecode.domain.jwxt.ScheduleLoginInitHint
 import com.neko.neuecode.ui.components.BrandLoadingMark
@@ -219,6 +220,8 @@ fun JwxtScheduleScreen(
                                 maxWeek = maxWeek,
                                 actualWeek = state.actualWeek,
                                 todayWeekday = state.todayWeekday,
+                                weekStartDay = state.weekStartDay,
+                                termStartEpochDay = state.termStartEpochDay,
                                 pagerState = pagerState,
                                 bouncePx = bounce.value,
                                 onWeekSettled = { viewModel.selectWeek(it) },
@@ -265,8 +268,9 @@ fun JwxtScheduleScreen(
             terms = state.terms,
             selectedTermCode = state.selectedTermCode,
             termStartEpochDay = state.termStartEpochDay,
+            weekStartDay = state.weekStartDay,
             onDismiss = { viewModel.dismissSettings() },
-            onSave = { term, start -> viewModel.saveSettings(term, start) },
+            onSave = { term, start, weekStart -> viewModel.saveSettings(term, start, weekStart) },
         )
     }
 }
@@ -415,11 +419,13 @@ private fun ScheduleSettingsDialog(
     terms: List<JwxtNamedCode>,
     selectedTermCode: String?,
     termStartEpochDay: Long?,
+    weekStartDay: WeekStartDay,
     onDismiss: () -> Unit,
-    onSave: (String?, Long?) -> Unit,
+    onSave: (String?, Long?, WeekStartDay) -> Unit,
 ) {
     var termCode by remember { mutableStateOf(selectedTermCode.orEmpty()) }
     var startDay by remember { mutableStateOf(termStartEpochDay) }
+    var weekStart by remember { mutableStateOf(weekStartDay) }
     var showDatePicker by remember { mutableStateOf(false) }
     val dateLabel = startDay?.let { formatEpochDay(it) } ?: "未设置"
     AlertDialog(
@@ -428,6 +434,19 @@ private fun ScheduleSettingsDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("教务学年学期列表不含开学日（QSSYRQ 为空），学期开始日期需本地填写。")
+                Text("每周第一天", style = MaterialTheme.typography.labelMedium)
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = weekStart == WeekStartDay.SUNDAY,
+                        onClick = { weekStart = WeekStartDay.SUNDAY },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    ) { Text("周日") }
+                    SegmentedButton(
+                        selected = weekStart == WeekStartDay.MONDAY,
+                        onClick = { weekStart = WeekStartDay.MONDAY },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    ) { Text("周一") }
+                }
                 Text("默认学期", style = MaterialTheme.typography.labelMedium)
                 if (terms.isEmpty()) {
                     OutlinedTextField(
@@ -458,7 +477,7 @@ private fun ScheduleSettingsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(termCode.ifBlank { null }, startDay) }) { Text("保存") }
+            TextButton(onClick = { onSave(termCode.ifBlank { null }, startDay, weekStart) }) { Text("保存") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("取消") }

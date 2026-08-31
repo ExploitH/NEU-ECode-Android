@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.neko.neuecode.data.local.schedule.JwxtScheduleCacheStore
 import com.neko.neuecode.data.local.schedule.ScheduleSettings
 import com.neko.neuecode.data.local.schedule.ScheduleSettingsStore
+import com.neko.neuecode.data.local.schedule.WeekStartDay
 import com.neko.neuecode.data.remote.campus.CampusIntranetProbe
 import com.neko.neuecode.data.repository.JwxtScheduleRepository
 import com.neko.neuecode.domain.jwxt.CourseDetail
@@ -45,6 +46,7 @@ data class JwxtScheduleUiState(
     val actualWeek: Int? = null,
     val markedWeekday: Int = 0,
     val termStartEpochDay: Long? = null,
+    val weekStartDay: WeekStartDay = WeekStartDay.SUNDAY,
     val showSettings: Boolean = false,
     val selectedDetail: CourseDetail? = null,
     val showIntranetHint: Boolean = false,
@@ -84,6 +86,7 @@ class JwxtScheduleViewModel @Inject constructor(
             actualWeek = actualWeek,
             markedWeekday = ScheduleTodayHighlight.weekdayToMark(week, actualWeek, weekday),
             termStartEpochDay = settings.termStartEpochDay,
+            weekStartDay = settings.weekStartDay,
             message = when {
                 cached != null -> "${cached.term.name} · ${cached.campus.name} · 本地缓存（未自动同步）"
                 else -> _uiState.value.message
@@ -238,10 +241,15 @@ class JwxtScheduleViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showSettings = false)
     }
 
-    fun saveSettings(defaultTermCode: String?, termStartEpochDay: Long?) {
+    fun saveSettings(
+        defaultTermCode: String?,
+        termStartEpochDay: Long?,
+        weekStartDay: WeekStartDay = WeekStartDay.SUNDAY,
+    ) {
         val settings = ScheduleSettings(
             defaultTermCode = defaultTermCode?.takeIf { it.isNotBlank() },
             termStartEpochDay = termStartEpochDay,
+            weekStartDay = weekStartDay,
         )
         settingsStore.save(settings)
         widgetRefresher.refresh()
@@ -253,6 +261,7 @@ class JwxtScheduleViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             selectedTermCode = settings.defaultTermCode ?: _uiState.value.selectedTermCode,
             termStartEpochDay = termStartEpochDay,
+            weekStartDay = weekStartDay,
             actualWeek = actualWeek,
             selectedWeek = week,
             todayWeekday = weekday,
