@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,6 +34,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -456,17 +459,64 @@ private fun ScheduleSettingsDialog(
                         singleLine = true,
                     )
                 } else {
-                    terms.forEach { term ->
-                        val selected = term.code == termCode
-                        Text(
-                            text = term.name.ifBlank { term.code },
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    val termListHeight = ScheduleSettingsLayout.termListHeightDp(terms.size).dp
+                    val termListScroll = rememberScrollState()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(termListHeight),
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { termCode = term.code }
-                                .padding(vertical = 6.dp),
-                        )
+                                .verticalScroll(termListScroll),
+                        ) {
+                            terms.forEach { term ->
+                                val selected = term.code == termCode
+                                Text(
+                                    text = term.name.ifBlank { term.code },
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(ScheduleSettingsLayout.TERM_ROW_HEIGHT_DP.dp)
+                                        .clickable { termCode = term.code }
+                                        .padding(vertical = 6.dp),
+                                )
+                            }
+                        }
+                        if (ScheduleSettingsLayout.isTermListScrollable(terms.size) &&
+                            termListScroll.maxValue > 0
+                        ) {
+                            val thumbRatio = termListHeight.value /
+                                (termListHeight.value + termListScroll.maxValue / 3f)
+                            val thumbHeight = (termListHeight.value * thumbRatio.coerceIn(0.18f, 0.6f)).dp
+                            val travel = (termListHeight - thumbHeight)
+                            val progress = termListScroll.value.toFloat() /
+                                termListScroll.maxValue.toFloat().coerceAtLeast(1f)
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .fillMaxHeight()
+                                    .width(3.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                        RoundedCornerShape(999.dp),
+                                    ),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(top = travel * progress)
+                                        .width(3.dp)
+                                        .height(thumbHeight)
+                                        .background(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                            RoundedCornerShape(999.dp),
+                                        ),
+                                )
+                            }
+                        }
                     }
                 }
                 Text("学期开始日期：$dateLabel", style = MaterialTheme.typography.bodyMedium)
