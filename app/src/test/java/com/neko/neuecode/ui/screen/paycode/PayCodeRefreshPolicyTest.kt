@@ -30,6 +30,14 @@ class PayCodeRefreshPolicyTest {
             PayCodeRefreshPolicy.canRefreshPayCode(
                 awaitingSms = false,
                 isRefreshing = false,
+                fetchEnabled = true,
+            ),
+        )
+        assertFalse(
+            PayCodeRefreshPolicy.canRefreshPayCode(
+                awaitingSms = false,
+                isRefreshing = false,
+                fetchEnabled = false,
             ),
         )
     }

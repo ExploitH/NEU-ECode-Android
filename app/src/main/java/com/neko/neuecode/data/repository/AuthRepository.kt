@@ -449,10 +449,14 @@ class AuthRepository @Inject constructor(
      * perform one official-style auto login using the encrypted credentials saved
      * when long-term login is enabled.
      */
-    suspend fun ensureFreshSession(): Result<Boolean> {
-        when (val valid = validateLoginTicket()) {
-            is Result.Success -> return valid
-            else -> Timber.i("Saved ticket is not valid; attempting long-term auto login")
+    suspend fun ensureFreshSession(forceRelogin: Boolean = false): Result<Boolean> {
+        if (!forceRelogin) {
+            when (val valid = validateLoginTicket()) {
+                is Result.Success -> return valid
+                else -> Timber.i("Saved ticket is not valid; attempting long-term auto login")
+            }
+        } else {
+            Timber.i("Balance/session API reported expired login; forcing long-term auto login")
         }
 
         if (!userPreferences.isAutoLoginEnabled()) {

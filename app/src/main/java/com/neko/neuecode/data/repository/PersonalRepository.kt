@@ -30,31 +30,74 @@ class PersonalRepository @Inject constructor(
      * Get campus card and network balance from 一号通 app structured personal-data API.
      */
     suspend fun getBalance(): Result<Balance> {
+        pendingYhtSms?.let { pending ->
+            return Result.Error(
+                AuthRepository.NeedSmsVerificationException(pending),
+                "需要短信验证码，请完成验证后再刷新余额",
+            )
+        }
         var refreshed = false
         repeat(2) { attempt ->
             when (val result = getBalanceOnce()) {
-                is Result.Success -> return result
+                is Result.Success -> {
+                    pendingYhtSms = null
+                    return result
+                }
                 is Result.Error -> {
-                    if (!refreshed && result.isSessionExpiredLike()) {
-                        refreshed = true
-                        Timber.i("Balance API indicates expired session; attempting auto refresh before retry")
-                        when (val refresh = authRepository.ensureFreshSession()) {
-                            is Result.Success -> Unit
-                            is Result.Error -> return Result.Error(
-                                refresh.exception,
-                                refresh.message ?: result.message ?: "登录已过期，请重新登录"
-                            )
-                            else -> return result
+                    val action = PersonalSessionErrors.retryAction(
+                        code = result.sessionCode,
+                        message = result.message,
+                        error = result.exception,
+                        alreadyRefreshed = refreshed,
+                    )
+                    when (action) {
+                        PersonalSessionErrors.RetryAction.StopForSms -> {
+                            pendingYhtSms = (result.exception as? AuthRepository.NeedSmsVerificationException)?.pending
+                            return result
                         }
-                    } else {
-                        if (attempt > 0) Timber.w("Balance retry failed: ${result.message}")
-                        return result
+                        PersonalSessionErrors.RetryAction.ReloginAndRetry -> {
+                            refreshed = true
+                            Timber.i("Balance API indicates expired session; forcing auto refresh before retry")
+                            when (val refresh = authRepository.ensureFreshSession(forceRelogin = true)) {
+                                is Result.Success -> Unit
+                                is Result.Error -> {
+                                    if (PersonalSessionErrors.isNeedSms(refresh.exception) ||
+                                        PersonalSessionErrors.isNeedSms(refresh.message)
+                                    ) {
+                                        pendingYhtSms =
+                                            (refresh.exception as? AuthRepository.NeedSmsVerificationException)?.pending
+                                        return Result.Error(
+                                            refresh.exception,
+                                            refresh.message ?: "需要短信验证码，请完成验证后再刷新余额",
+                                        )
+                                    }
+                                    return Result.Error(
+                                        refresh.exception,
+                                        refresh.message ?: result.message ?: "登录已过期，请重新登录",
+                                    )
+                                }
+                                else -> return result
+                            }
+                        }
+                        PersonalSessionErrors.RetryAction.Fail -> {
+                            if (attempt > 0) Timber.w("Balance retry failed: ${result.message}")
+                            return result
+                        }
                     }
                 }
                 else -> Unit
             }
         }
         return Result.Error(Exception("Balance retry exhausted"), "获取余额失败")
+    }
+
+    @Volatile
+    private var pendingYhtSms: AuthRepository.SmsVerificationRequired? = null
+
+    fun pendingYhtSms(): AuthRepository.SmsVerificationRequired? = pendingYhtSms
+
+    fun clearYhtSms() {
+        pendingYhtSms = null
     }
 
     private suspend fun getBalanceOnce(): Result<Balance> {
@@ -67,9 +110,11 @@ class PersonalRepository @Inject constructor(
             )
             if (!itemsResponse.isSuccessful) {
                 Timber.e("Personal data items_app fetch failed: ${itemsResponse.code()}")
+                val httpCode = itemsResponse.code().toString()
                 return Result.Error(
                     Exception("Failed to fetch balance entry list HTTP ${itemsResponse.code()}"),
-                    if (itemsResponse.code() == 401 || itemsResponse.code() == 403) "登录已过期" else "获取余额入口失败"
+                    if (itemsResponse.code() == 401 || itemsResponse.code() == 403) "登录已过期" else "获取余额入口失败",
+                    sessionCode = httpCode,
                 )
             }
 
@@ -79,7 +124,7 @@ class PersonalRepository @Inject constructor(
             if (errorCode != null && errorCode != "0") {
                 val message = root.findFirstString("m") ?: root.findFirstString("message") ?: "会话无效"
                 Timber.w("Personal data items_app returned error: $errorCode $message")
-                return Result.Error(Exception(message), message)
+                return Result.Error(Exception(message), message, sessionCode = errorCode)
             }
 
             val payload = root.unwrapEncryptedPayload() ?: root
@@ -106,16 +151,6 @@ class PersonalRepository @Inject constructor(
             Timber.e(e, "Balance fetch exception")
             Result.Error(e, "获取余额失败: ${e.message}")
         }
-    }
-
-    private fun Result.Error.isSessionExpiredLike(): Boolean {
-        val text = listOfNotNull(message, exception.message).joinToString(" ")
-        return text.contains("请先登录") ||
-                text.contains("登录已过期") ||
-                text.contains("会话无效") ||
-                text.contains("ticket", ignoreCase = true) ||
-                text.contains("401") ||
-                text.contains("403")
     }
 
     private suspend fun fetchDetailValue(id: String): String? {

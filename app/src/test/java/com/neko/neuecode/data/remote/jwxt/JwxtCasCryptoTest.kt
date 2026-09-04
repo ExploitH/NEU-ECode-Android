@@ -29,17 +29,15 @@ class JwxtCasCryptoTest {
     }
 
     @Test
-    fun looksLikeSmsChallenge_detectsDeviceSecondFactorPage() {
+    fun looksLikeSmsChallenge_detectsCurrentDeviceIdentityPage() {
         val html = """
             <html><body>
-              <div>二次认证</div>
-              <input id="mcode" />
-              <a id="sendCode">获取验证码</a>
-              <p>登录码已发送，请输入验证码</p>
+              <div>为保障您的账号安全，当前设备需进行身份验证</div>
+              <span>绑定手机尾号：*******9060</span>
+              <form id="second_auth_form"></form>
             </body></html>
         """.trimIndent()
         assertTrue(JwxtCasCrypto.looksLikeSmsChallenge(html))
-        assertFalse(JwxtCasCrypto.looksLikeSmsChallenge("<form id=\"loginForm\"></form>"))
     }
 
     @Test

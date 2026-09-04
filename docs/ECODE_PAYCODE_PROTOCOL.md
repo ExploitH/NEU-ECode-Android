@@ -1,6 +1,7 @@
 # eCode 原生付款码协议（只读）
 
-Verified: 2026-08-26 on student OpenVPN (`tun0`), CAS service
+Verified: 2026-08-26 on student OpenVPN (`tun0`), and re-verified 2026-09-02
+from the public web SPA `https://ecode.neu.edu.cn/ecode/#/` after CAS service
 `https://ecode.neu.edu.cn/ecode/api/sso/login`.
 
 This document lists methods, paths, non-secret fields, and response **shape**.
@@ -33,7 +34,9 @@ Accept: application/json
 Cookie: SESSION=…   (path /ecode/api)
 ```
 
-Live probe 2026-08-26: HTTP **200** `application/json`.
+Live probe 2026-08-26 (OpenVPN) and 2026-09-02 (public web SPA): HTTP **200**
+`application/json`. The SPA axios `baseURL` is relative `"api"` from `/ecode/`,
+so `GET api/qr-code` is still `/ecode/api/qr-code`. The path did **not** change.
 
 Success shape (values redacted):
 
@@ -60,6 +63,12 @@ Domain mapping for `PayCode`:
 | `data[0].attributes.qrInvalidTime` | `expiresAtEpochMs` (parse as Long) |
 | `ttlSeconds` | `max(0, (expiresAt - now) / 1000)` |
 | `createTime` | unused for domain, optional diagnostics |
+
+The official web bundle (`app.fa3a054d.js`) currently computes TTL as
+`attributes.qrCode.qrInvalidTime - attributes.qrCode.createTime - 2000`.
+Live `qrCode` is a 27-char **string**, so that is `NaN` and the page falls
+back to a 10s Vue default. Native parsing must keep using the sibling fields
+above, not nested properties on `qrCode`.
 
 If `qrInvalidTime <= now` → `PayCodeFailure.Expired`.
 If HTTP 401/403 or login HTML → `Unauthenticated` / `NeedRelogin`.

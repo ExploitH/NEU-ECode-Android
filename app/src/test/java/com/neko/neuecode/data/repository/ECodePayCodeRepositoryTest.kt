@@ -32,6 +32,7 @@ class ECodePayCodeRepositoryTest {
             authenticator = mockk(relaxed = true),
             credentialStore = store,
             http = OkHttpClient(),
+            cookieJar = mockk(relaxed = true),
         )
 
         val result = repository.fetchPayCode(nowEpochMs)
@@ -65,6 +66,7 @@ class ECodePayCodeRepositoryTest {
                 authenticator = authenticator,
                 credentialStore = store,
                 http = warmupClient(server, client),
+                cookieJar = mockk(relaxed = true),
             )
 
             val result = repository.fetchPayCode(nowEpochMs)
@@ -78,16 +80,24 @@ class ECodePayCodeRepositoryTest {
     }
 
     @Test
-    fun fetchPayCode_http401_returnsUnauthenticated() = runBlocking {
+    fun fetchPayCode_http401_retriesCasThenGetsQrCode() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody("ok"))
             server.enqueue(MockResponse().setResponseCode(401).setBody("unauthorized"))
+            server.enqueue(MockResponse().setBody("ok"))
+            server.enqueue(
+                MockResponse()
+                    .setHeader("Content-Type", "application/json")
+                    .setBody(
+                        """{"data":[{"type":null,"attributes":{"qrCode":"NEU-PAY-FIXTURE-001","createTime":"1710000000000","qrInvalidTime":"1710000090000"}}]}""",
+                    ),
+            )
             val repository = repository(server)
 
             val result = repository.fetchPayCode(nowEpochMs)
 
-            val failure = result as PayCodeParseResult.Failure
-            assertEquals(PayCodeFailure.Unauthenticated, failure.reason)
+            val success = result as PayCodeParseResult.Success
+            assertEquals("NEU-PAY-FIXTURE-001", success.code.payload)
         }
     }
 
@@ -121,6 +131,7 @@ class ECodePayCodeRepositoryTest {
             authenticator = authenticator,
             credentialStore = store,
             http = OkHttpClient(),
+            cookieJar = mockk(relaxed = true),
         )
 
         val first = repository.fetchPayCode(nowEpochMs) as PayCodeParseResult.Failure
@@ -129,6 +140,7 @@ class ECodePayCodeRepositoryTest {
         assertEquals(PayCodeFailure.NeedSms, first.reason)
         assertEquals(PayCodeFailure.NeedSms, second.reason)
         assertTrue(first.message.orEmpty().contains("不要反复点刷新"))
+        assertTrue(first.message.orEmpty().contains("图形验证码"))
         verify(exactly = 1) { authenticator.login(any(), any(), any()) }
     }
 
@@ -168,6 +180,7 @@ class ECodePayCodeRepositoryTest {
             authenticator = authenticator,
             credentialStore = store,
             http = warmupClient(server, client),
+            cookieJar = mockk(relaxed = true),
         )
     }
 

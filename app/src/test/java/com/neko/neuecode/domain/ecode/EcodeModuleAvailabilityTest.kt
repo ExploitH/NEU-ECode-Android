@@ -2,29 +2,29 @@ package com.neko.neuecode.domain.ecode
 
 import com.neko.neuecode.ui.navigation.MainDestinations
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EcodeModuleAvailabilityTest {
 
     @Test
-    fun pause_disablesPayCodeFetchAndBackgroundWork() {
-        assertFalse(EcodeModuleAvailability.ENABLED)
-        assertFalse(EcodeModuleAvailability.shouldFetchPayCode())
-        assertFalse(EcodeModuleAvailability.shouldScheduleEcodeBackgroundWork())
-        assertFalse(EcodeModuleAvailability.shouldOpenPayCodeWebView())
-        assertFalse(EcodeModuleAvailability.shouldOpenRecharge())
+    fun enabled_allowsPayCodeFetchAndBackgroundWork() {
+        assertTrue(EcodeModuleAvailability.ENABLED)
+        assertTrue(EcodeModuleAvailability.shouldFetchPayCode())
+        assertTrue(EcodeModuleAvailability.shouldScheduleEcodeBackgroundWork())
+        assertTrue(EcodeModuleAvailability.shouldOpenPayCodeWebView())
+        assertTrue(EcodeModuleAvailability.shouldOpenRecharge())
     }
 
     @Test
-    fun pause_keepsScheduleAndIntranet() {
+    fun enabled_keepsScheduleIntranetAndPaysAsDefaultStart() {
         assertTrue(EcodeModuleAvailability.shouldKeepSchedule())
         assertTrue(EcodeModuleAvailability.shouldKeepCampusVpn())
-        assertEquals(MainDestinations.SCHEDULE, EcodeModuleAvailability.defaultStartRoute())
-        assertEquals(MainDestinations.SCHEDULE, MainDestinations.resolveStartRoute(null))
-        assertEquals(MainDestinations.SCHEDULE, MainDestinations.resolveStartRoute("pay"))
-        assertEquals(MainDestinations.SCHEDULE, MainDestinations.resolveStartRoute("unexpected"))
+        assertEquals(MainDestinations.PAY, EcodeModuleAvailability.defaultStartRoute())
+        assertEquals(MainDestinations.PAY, MainDestinations.resolveStartRoute(null))
+        assertEquals(MainDestinations.PAY, MainDestinations.resolveStartRoute("pay"))
+        assertEquals(MainDestinations.PAY, MainDestinations.resolveStartRoute("unexpected"))
+        assertEquals(MainDestinations.SCHEDULE, MainDestinations.resolveStartRoute("schedule"))
     }
 
     @Test

@@ -38,6 +38,9 @@ class UserPreferences @Inject constructor(
         val LOGIN_TICKET = stringPreferencesKey("login_ticket")
         val LAST_REFRESH = longPreferencesKey("last_refresh")
         val AUTO_LOGIN_ENABLED = booleanPreferencesKey("auto_login_enabled")
+        val PAYCODE_FETCH_ENABLED = booleanPreferencesKey("paycode_fetch_enabled")
+        val PAYCODE_SMS_LOCK = booleanPreferencesKey("paycode_sms_lock")
+        val PAYCODE_SWITCH_HINT = stringPreferencesKey("paycode_switch_hint")
         
         val SAVED_USERNAME = stringPreferencesKey("saved_username")
         val SAVED_PASSWORD = stringPreferencesKey("saved_password")
@@ -146,6 +149,47 @@ class UserPreferences @Inject constructor(
     
     suspend fun isAutoLoginEnabled(): Boolean {
         return context.userDataStore.data.first()[Keys.AUTO_LOGIN_ENABLED] ?: false
+    }
+
+    val payCodeFetchEnabledFlow: Flow<Boolean> = context.userDataStore.data.map { prefs ->
+        prefs[Keys.PAYCODE_FETCH_ENABLED] ?: false
+    }
+
+    val payCodeSmsLockFlow: Flow<Boolean> = context.userDataStore.data.map { prefs ->
+        prefs[Keys.PAYCODE_SMS_LOCK] ?: false
+    }
+
+    val payCodeSwitchHintFlow: Flow<String> = context.userDataStore.data.map { prefs ->
+        prefs[Keys.PAYCODE_SWITCH_HINT].orEmpty()
+    }
+
+    suspend fun isPayCodeFetchEnabled(): Boolean {
+        return context.userDataStore.data.first()[Keys.PAYCODE_FETCH_ENABLED] ?: false
+    }
+
+    suspend fun setPayCodeFetchEnabled(enabled: Boolean) {
+        context.userDataStore.edit { prefs ->
+            prefs[Keys.PAYCODE_FETCH_ENABLED] = enabled
+        }
+    }
+
+    suspend fun isPayCodeSmsLocked(): Boolean {
+        return context.userDataStore.data.first()[Keys.PAYCODE_SMS_LOCK] ?: false
+    }
+
+    suspend fun setPayCodeSmsLock(locked: Boolean, hint: String = "") {
+        context.userDataStore.edit { prefs ->
+            prefs[Keys.PAYCODE_SMS_LOCK] = locked
+            if (hint.isBlank()) {
+                prefs.remove(Keys.PAYCODE_SWITCH_HINT)
+            } else {
+                prefs[Keys.PAYCODE_SWITCH_HINT] = hint
+            }
+        }
+    }
+
+    suspend fun payCodeSwitchHint(): String {
+        return context.userDataStore.data.first()[Keys.PAYCODE_SWITCH_HINT].orEmpty()
     }
     
     suspend fun clearLegacySavedPassword() {

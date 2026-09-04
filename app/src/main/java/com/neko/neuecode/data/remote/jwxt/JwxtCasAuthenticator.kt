@@ -8,7 +8,10 @@ import okhttp3.Request
 import java.io.IOException
 
 open class JwxtAuthenticationException(message: String) : IOException(message)
-class JwxtHumanVerificationRequired(message: String) : JwxtAuthenticationException(message)
+class JwxtHumanVerificationRequired(
+    message: String,
+    val challenge: CasSecondAuthChallenge? = null,
+) : JwxtAuthenticationException(message)
 
 data class JwxtCasLoginResult(
     val ok: Boolean,
@@ -22,7 +25,7 @@ class JwxtCasAuthenticator(
 ) {
     companion object {
         const val DEFAULT_LOGIN_ENDPOINT = "https://pass.neu.edu.cn/tpass/login"
-        private val mfaPattern = Regex("登录码已发送|输入验证码|手机验证码|动态验证码|二次认证|图形验证码")
+        private val mfaPattern = Regex("登录码已发送|输入验证码|手机验证码|动态验证码|二次认证|图形验证码|当前设备需进行身份验证|绑定手机尾号")
         private val failurePattern = Regex("账号或密码错误|登录失败|认证失败|剩余.{0,20}次")
     }
 
@@ -67,7 +70,10 @@ class JwxtCasAuthenticator(
             throw JwxtAuthenticationException("CAS login page failed: HTTP $pageCode")
         }
         if (JwxtCasCrypto.looksLikeSmsChallenge(pageBody)) {
-            throw JwxtHumanVerificationRequired("CAS requires live SMS/CAPTCHA/device verification")
+            throw JwxtHumanVerificationRequired(
+                "CAS requires live SMS/CAPTCHA/device verification",
+                CasSecondAuthParser.parse(pageBody, pageUrl.toString()),
+            )
         }
         val scriptUrl = JwxtCasCrypto.extractLoginScriptUrl(pageBody, pageUrl.toString())
             ?: throw JwxtAuthenticationException("CAS RSA public key is unavailable")
@@ -114,8 +120,11 @@ class JwxtCasAuthenticator(
         if (!result.isSuccessful) {
             throw JwxtAuthenticationException("CAS password login did not complete")
         }
-        if (mfaPattern.containsMatchIn(resultBody)) {
-            throw JwxtHumanVerificationRequired("CAS requires live SMS/CAPTCHA/device verification")
+        if (mfaPattern.containsMatchIn(resultBody) || CasSecondAuthParser.isChallengeHtml(resultBody)) {
+            throw JwxtHumanVerificationRequired(
+                "CAS requires live SMS/CAPTCHA/device verification",
+                CasSecondAuthParser.parse(resultBody, resultUrl.toString()),
+            )
         }
         val stillHasForm = resultBody.contains("id=\"loginForm\"", ignoreCase = true) ||
             resultBody.contains("id='loginForm'", ignoreCase = true)

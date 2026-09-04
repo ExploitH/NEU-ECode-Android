@@ -5,7 +5,7 @@ package com.neko.neuecode.domain.ecode
  * background work. Schedule and campus VPN stay available.
  */
 object EcodeModuleAvailability {
-    const val ENABLED = false
+    const val ENABLED = true
 
     const val PAUSE_NOTICE =
         "学校教务系统近期出现高频次更新，此模块需等待教务系统更新完毕后，再逐步开放。带来各种困扰，敬请谅解！"
@@ -17,5 +17,5 @@ object EcodeModuleAvailability {
     fun shouldKeepSchedule(): Boolean = true
     fun shouldKeepCampusVpn(): Boolean = true
 
-    fun defaultStartRoute(): String = "schedule"
+    fun defaultStartRoute(): String = "pay"
 }

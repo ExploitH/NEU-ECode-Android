@@ -1,10 +1,12 @@
 package com.neko.neuecode.data.repository
 
+import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.local.secure.SecureCredentialStore
 import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.data.remote.ecode.ECodePayCodeApi
 import com.neko.neuecode.data.remote.ecode.ECodePayCodeHttpResponse
 import com.neko.neuecode.data.remote.ecode.ECodePayCodeParser
+import com.neko.neuecode.data.remote.jwxt.CasSecondAuthChallenge
 import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
 import com.neko.neuecode.data.remote.jwxt.JwxtHumanVerificationRequired
 import com.neko.neuecode.domain.ecode.PayCodeFailure
@@ -23,9 +25,27 @@ class ECodePayCodeRepository @Inject constructor(
     private val authenticator: JwxtCasAuthenticator,
     private val credentialStore: SecureCredentialStore,
     private val http: OkHttpClient,
+    private val cookieJar: PersistentCookieJar,
 ) {
     @Volatile
+    internal var sessionProbeOverride: (() -> Boolean)? = null
+
+    @Volatile
     private var smsChallengePending = false
+
+    @Volatile
+    private var pendingChallenge: CasSecondAuthChallenge? = null
+
+    fun hasUsableEcodeSession(): Boolean {
+        sessionProbeOverride?.let { return it() }
+        val cookies = cookieJar.getCookiesForUrl(NeuCampusHttp.ECODE_HOME) +
+            cookieJar.getCookiesForUrl("https://ecode.neu.edu.cn/ecode/api/qr-code")
+        return cookies.any { cookie ->
+            cookie.name.equals("SESSION", ignoreCase = true) &&
+                cookie.value.isNotBlank() &&
+                !cookie.isExpired()
+        }
+    }
 
     suspend fun fetchPayCode(nowEpochMs: Long = System.currentTimeMillis()): PayCodeParseResult {
         val credentials = credentialStore.load()
@@ -38,21 +58,41 @@ class ECodePayCodeRepository @Inject constructor(
                 return@withContext smsChallengeFailure()
             }
             try {
-                authenticator.login(
-                    username = credentials.username,
-                    password = credentials.password,
-                    service = NeuCampusHttp.ECODE_SSO,
-                )
-                warmupEcodeSession()
+                if (!hasUsableEcodeSession()) {
+                    authenticator.login(
+                        username = credentials.username,
+                        password = credentials.password,
+                        service = NeuCampusHttp.ECODE_SSO,
+                    )
+                    warmupEcodeSession()
+                }
                 fetchQrWithRetry(nowEpochMs).also { result ->
                     if (result is PayCodeParseResult.Success) {
                         smsChallengePending = false
+                        pendingChallenge = null
+                    } else if (
+                        result is PayCodeParseResult.Failure &&
+                        result.reason == PayCodeFailure.Unauthenticated
+                    ) {
+                        authenticator.login(
+                            username = credentials.username,
+                            password = credentials.password,
+                            service = NeuCampusHttp.ECODE_SSO,
+                        )
+                        warmupEcodeSession()
+                        return@withContext fetchQrWithRetry(nowEpochMs).also { retried ->
+                            if (retried is PayCodeParseResult.Success) {
+                                smsChallengePending = false
+                                pendingChallenge = null
+                            }
+                        }
                     }
                 }
             } catch (e: JwxtHumanVerificationRequired) {
                 Timber.w(e, "eCode CAS requires human verification")
                 smsChallengePending = true
-                smsChallengeFailure()
+                pendingChallenge = e.challenge
+                smsChallengeFailure(e.challenge)
             } catch (e: Exception) {
                 Timber.w(e, "eCode pay-code fetch failed")
                 classifyNetworkFailure(e)
@@ -60,14 +100,20 @@ class ECodePayCodeRepository @Inject constructor(
         }
     }
 
+    fun pendingSmsChallenge(): CasSecondAuthChallenge? = pendingChallenge
+
     fun clearSmsChallenge() {
         smsChallengePending = false
+        pendingChallenge = null
     }
 
-    private fun smsChallengeFailure(): PayCodeParseResult.Failure {
+    private fun smsChallengeFailure(
+        challenge: CasSecondAuthChallenge? = pendingChallenge,
+    ): PayCodeParseResult.Failure {
+        val phoneHint = challenge?.maskedPhone?.let { "绑定手机尾号 $it。" }.orEmpty()
         return PayCodeParseResult.Failure(
             PayCodeFailure.NeedSms,
-            "付款码登录需要短信验证码。请先完成短信验证，验证完成前请不要反复点刷新，以免重复发送短信。",
+            "${phoneHint}付款码登录需要图形验证码和短信验证码。请先完成验证，验证完成前请不要反复点刷新，以免重复发送短信。",
         )
     }
 

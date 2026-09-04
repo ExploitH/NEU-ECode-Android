@@ -42,7 +42,11 @@ sealed class SessionState {
  */
 sealed class Result<out T> {
     data class Success<T>(val data: T) : Result<T>()
-    data class Error(val exception: Throwable, val message: String? = null) : Result<Nothing>()
+    data class Error(
+        val exception: Throwable,
+        val message: String? = null,
+        val sessionCode: String? = null,
+    ) : Result<Nothing>()
     object Loading : Result<Nothing>()
 }
 

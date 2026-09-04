@@ -54,14 +54,21 @@ class PayCodeHomePresentationTest {
     }
 
     @Test
-    fun smsChallenge_hidesOpenButtonAndKeepsHint() {
+    fun smsChallenge_showsChallengeAndKeepsHint() {
         val state = PayCodeHomePresentation.from(
             PayCodeParseResult.Failure(PayCodeFailure.NeedSms, "请先完成短信验证"),
+            fetchEnabled = true,
+            switchHint = "请完成图形验证码和短信验证码",
+            maskedPhone = "*******9060",
         )
         assertEquals(PayCodeHomeStatus.Failed, state.status)
         assertFalse(state.showOpenPayCodeButton)
         assertFalse(state.showNativeQr)
+        assertTrue(state.showSmsChallenge)
+        assertEquals("*******9060", state.maskedPhone)
         assertEquals("请先完成短信验证", state.syncHint)
+        assertEquals("请完成图形验证码和短信验证码", state.switchHint)
+        assertTrue(state.fetchEnabled)
     }
 
     @Test

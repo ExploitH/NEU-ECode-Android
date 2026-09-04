@@ -9,6 +9,7 @@ import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 import com.neko.neuecode.R
+import com.neko.neuecode.data.local.datastore.UserPreferences
 import com.neko.neuecode.domain.ecode.PayCodeFailure
 import com.neko.neuecode.domain.ecode.PayCodeParseResult
 import com.neko.neuecode.domain.model.Result
@@ -129,6 +130,14 @@ class ECodeWidgetProvider : AppWidgetProvider() {
                         appContext,
                         ECodeWidgetEntryPoint::class.java,
                     )
+                    if (!entryPoint.userPreferences().isPayCodeFetchEnabled() ||
+                        entryPoint.userPreferences().isPayCodeSmsLocked()
+                    ) {
+                        ECodeWidgetStore.saveStatus(appContext, "取码开关已关闭，打开 App 后再取码")
+                        render(appContext, widgetIds, loading = false)
+                        pendingResult?.finish()
+                        return@launch
+                    }
                     when (val result = entryPoint.eCodePayCodeRepository().fetchPayCode()) {
                         is PayCodeParseResult.Success -> {
                             val bitmap = PayCodeQrEncoder.encodeBitmap(result.code.payload, sizePx = 512)
