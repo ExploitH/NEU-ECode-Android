@@ -73,7 +73,7 @@ class JwxtScheduleViewModel @Inject constructor(
         val todayEpochDay = ScheduleWeekClock.todayEpochDay()
         val weekday = ScheduleWeekClock.todayWeekday()
         val cached = cacheStore.load()
-        val actualWeek = actualWeekOf(settings.termStartEpochDay, todayEpochDay)
+        val actualWeek = actualWeekOf(settings.termStartEpochDay, todayEpochDay, settings.weekStartDay)
         val selectedTerm = settings.defaultTermCode ?: cached?.term?.code
         val week = actualWeek ?: 1
         _uiState.value = _uiState.value.copy(
@@ -124,7 +124,11 @@ class JwxtScheduleViewModel @Inject constructor(
                     widgetRefresher.refresh()
                     val today = ScheduleWeekClock.todayEpochDay()
                     val weekday = ScheduleWeekClock.todayWeekday()
-                    val actualWeek = actualWeekOf(_uiState.value.termStartEpochDay, today)
+                    val actualWeek = actualWeekOf(
+                        _uiState.value.termStartEpochDay,
+                        today,
+                        _uiState.value.weekStartDay,
+                    )
                     val week = (actualWeek ?: _uiState.value.selectedWeek).coerceIn(1, maxWeekOf(result.data))
                     finishSyncProgress(
                         loading = false,
@@ -255,7 +259,7 @@ class JwxtScheduleViewModel @Inject constructor(
         widgetRefresher.refresh()
         val today = ScheduleWeekClock.todayEpochDay()
         val weekday = ScheduleWeekClock.todayWeekday()
-        val actualWeek = actualWeekOf(termStartEpochDay, today)
+        val actualWeek = actualWeekOf(termStartEpochDay, today, weekStartDay)
         val max = _uiState.value.maxWeek.coerceAtLeast(1)
         val week = (actualWeek ?: _uiState.value.selectedWeek).coerceIn(1, max)
         _uiState.value = _uiState.value.copy(
@@ -284,8 +288,12 @@ class JwxtScheduleViewModel @Inject constructor(
         }
     }
 
-    private fun actualWeekOf(termStartEpochDay: Long?, todayEpochDay: Long): Int? {
-        return ScheduleWeekClock.actualWeek(termStartEpochDay, todayEpochDay)
+    private fun actualWeekOf(
+        termStartEpochDay: Long?,
+        todayEpochDay: Long,
+        weekStartDay: WeekStartDay,
+    ): Int? {
+        return ScheduleWeekClock.actualWeek(termStartEpochDay, todayEpochDay, weekStartDay)
     }
 
     private fun maxWeekOf(document: JwxtScheduleDocument?): Int {

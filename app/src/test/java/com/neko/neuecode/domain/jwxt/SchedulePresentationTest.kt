@@ -323,6 +323,67 @@ class SchedulePresentationTest {
     }
 
     @Test
+    fun todayItems_sundayFirstUsesDisplayWeekForSundayClass() {
+        val sundayDoc = JwxtScheduleNormalizer.normalize(
+            account = "20240001",
+            termCode = "2026-2027-1",
+            termName = "2026-2027学年秋季学期",
+            campusCode = "01",
+            campusName = "浑南校区",
+            sections = emptyList(),
+            schedule = JsonParser.parseString(
+                """
+                {
+                  "arrangedList": [
+                    {
+                      "courseCode": "A2002",
+                      "courseName": "周日课程",
+                      "teachClassId": "JX002",
+                      "courseSerialNo": "JX002",
+                      "teachClassName": "信息2401",
+                      "teachingTarget": "信息2401",
+                      "credit": "2.0",
+                      "campusName": "浑南校区",
+                      "weeksAndTeachers": "1周[理论]/张三[主讲]",
+                      "beginTime": "08:30",
+                      "endTime": "10:10",
+                      "beginSection": 1,
+                      "endSection": 2,
+                      "placeName": "信息A101",
+                      "dayOfWeek": 7,
+                      "titleDetail": ["信息2401", "周日课程 JX002", "1周 张三 浑南校区 信息A101", "考试 / 百分制"],
+                      "titleWeekTeacherClassroomDetail": ["1周 张三 浑南校区 信息A101"]
+                    }
+                  ],
+                  "notArrangeList": [],
+                  "practiceList": []
+                }
+                """.trimIndent(),
+            ).asJsonObject,
+            generatedAt = "2026-08-26T00:00:00Z",
+        )
+        val termStart = ScheduleWeekClock.localEpochDay(2026, 8, 31)
+        val academicSunday = SchedulePresentation.todayItems(sundayDoc, weekday = 7, week = 1)
+        val displayWeek1 = SchedulePresentation.todayItems(
+            sundayDoc,
+            weekday = 7,
+            week = 1,
+            weekStartDay = WeekStartDay.SUNDAY,
+            termStartEpochDay = termStart,
+        )
+        val displayWeek2 = SchedulePresentation.todayItems(
+            sundayDoc,
+            weekday = 7,
+            week = 2,
+            weekStartDay = WeekStartDay.SUNDAY,
+            termStartEpochDay = termStart,
+        )
+        assertEquals(listOf("周日课程"), academicSunday.map { it.courseName })
+        assertTrue(displayWeek1.isEmpty())
+        assertEquals(listOf("周日课程"), displayWeek2.map { it.courseName })
+    }
+
+    @Test
     fun detail_exposesReadOnlyFieldsWithoutSecrets() {
         val event = document.events[0]
         val detail = SchedulePresentation.detail(event)

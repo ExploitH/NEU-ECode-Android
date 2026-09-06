@@ -82,9 +82,28 @@ object ScheduleWeekLayout {
         if (academicWeek < 1 || weekday !in 1..7) return null
         if (termStartEpochDay == null || weekStartDay == WeekStartDay.MONDAY) return academicWeek
         val date = occurrenceEpochDay(termStartEpochDay, academicWeek, weekday) ?: return academicWeek
-        val firstStart = displayWeekStartEpochDay(termStartEpochDay, 1, weekStartDay) ?: return academicWeek
-        if (date < firstStart) return 1
-        return ((date - firstStart) / 7L + 1L).toInt()
+        return displayWeekOfDate(termStartEpochDay, date, weekStartDay)
+    }
+
+    fun displayWeekOfDate(
+        termStartEpochDay: Long?,
+        epochDay: Long,
+        weekStartDay: WeekStartDay,
+    ): Int {
+        if (termStartEpochDay == null) return 1
+        val firstStart = displayWeekStartEpochDay(termStartEpochDay, 1, weekStartDay) ?: return 1
+        if (epochDay < firstStart) return 1
+        return ((epochDay - firstStart) / 7L + 1L).toInt().coerceAtLeast(1)
+    }
+
+    fun actualDisplayWeek(
+        termStartEpochDay: Long?,
+        epochDay: Long,
+        weekStartDay: WeekStartDay,
+    ): Int? {
+        if (termStartEpochDay == null) return null
+        if (epochDay < termStartEpochDay) return null
+        return displayWeekOfDate(termStartEpochDay, epochDay, weekStartDay)
     }
 
     fun headers(

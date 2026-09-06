@@ -92,9 +92,26 @@ object SchedulePresentation {
         }
     }
 
-    fun todayItems(document: JwxtScheduleDocument, weekday: Int, week: Int): List<ScheduleTodayItem> {
+    fun todayItems(
+        document: JwxtScheduleDocument,
+        weekday: Int,
+        week: Int,
+        weekStartDay: WeekStartDay = WeekStartDay.MONDAY,
+        termStartEpochDay: Long? = null,
+    ): List<ScheduleTodayItem> {
+        val target = week.coerceAtLeast(1)
         return document.events
-            .filter { it.weekday == weekday && week in it.weeks }
+            .filter { event ->
+                event.weekday == weekday &&
+                    event.weeks.any { academicWeek ->
+                        ScheduleWeekLayout.displayWeekOfOccurrence(
+                            termStartEpochDay = termStartEpochDay,
+                            academicWeek = academicWeek,
+                            weekday = event.weekday,
+                            weekStartDay = weekStartDay,
+                        ) == target
+                    }
+            }
             .sortedBy { it.sections.start }
             .map { event ->
                 ScheduleTodayItem(

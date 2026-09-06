@@ -32,8 +32,8 @@ android {
         applicationId = "com.neko.neuecode"
         minSdk = 23
         targetSdk = 35
-        versionCode = 73
-        versionName = "7.4"
+        versionCode = 74
+        versionName = "7.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

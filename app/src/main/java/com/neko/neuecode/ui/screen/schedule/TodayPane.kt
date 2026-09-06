@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.neko.neuecode.data.local.schedule.WeekStartDay
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.SchedulePresentation
 import com.neko.neuecode.domain.jwxt.ScheduleTodayItem
@@ -26,8 +27,16 @@ fun TodayPane(
     week: Int,
     onItemClick: (ScheduleTodayItem) -> Unit,
     modifier: Modifier = Modifier,
+    weekStartDay: WeekStartDay = WeekStartDay.MONDAY,
+    termStartEpochDay: Long? = null,
 ) {
-    val items = SchedulePresentation.todayItems(document, weekday = weekday, week = week)
+    val items = SchedulePresentation.todayItems(
+        document,
+        weekday = weekday,
+        week = week,
+        weekStartDay = weekStartDay,
+        termStartEpochDay = termStartEpochDay,
+    )
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = "今天 ${items.size} 节",

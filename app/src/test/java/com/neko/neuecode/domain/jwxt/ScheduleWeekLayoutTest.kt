@@ -200,6 +200,52 @@ class ScheduleWeekLayoutTest {
     }
 
     @Test
+    fun displayWeekOfDate_sundayFirstPutsSep6InWeek2WhenTermStartsMonday() {
+        // 2026-08-31 is Monday. Sunday-first week 1 is 8.30-9.5; 9.6 is week 2 Sunday.
+        val termStart = ScheduleWeekClock.localEpochDay(2026, 8, 31)
+        val sep5 = ScheduleWeekClock.localEpochDay(2026, 9, 5)
+        val sep6 = ScheduleWeekClock.localEpochDay(2026, 9, 6)
+        val aug30 = ScheduleWeekClock.localEpochDay(2026, 8, 30)
+        assertEquals(
+            1,
+            ScheduleWeekLayout.displayWeekOfDate(termStart, sep5, WeekStartDay.SUNDAY),
+        )
+        assertEquals(
+            2,
+            ScheduleWeekLayout.displayWeekOfDate(termStart, sep6, WeekStartDay.SUNDAY),
+        )
+        assertEquals(
+            1,
+            ScheduleWeekLayout.displayWeekOfDate(termStart, sep6, WeekStartDay.MONDAY),
+        )
+        assertEquals(
+            2,
+            ScheduleWeekLayout.actualDisplayWeek(termStart, sep6, WeekStartDay.SUNDAY),
+        )
+        assertNull(
+            ScheduleWeekLayout.actualDisplayWeek(termStart, aug30, WeekStartDay.SUNDAY),
+        )
+        assertEquals(
+            1,
+            ScheduleWeekLayout.actualDisplayWeek(termStart, termStart, WeekStartDay.SUNDAY),
+        )
+    }
+
+    @Test
+    fun displayWeekOfDate_sundayTermStartKeepsSep6InWeek2() {
+        val termStart = ScheduleWeekClock.localEpochDay(2026, 8, 30)
+        val sep6 = ScheduleWeekClock.localEpochDay(2026, 9, 6)
+        assertEquals(
+            2,
+            ScheduleWeekLayout.displayWeekOfDate(termStart, sep6, WeekStartDay.SUNDAY),
+        )
+        assertEquals(
+            2,
+            ScheduleWeekLayout.actualDisplayWeek(termStart, sep6, WeekStartDay.SUNDAY),
+        )
+    }
+
+    @Test
     fun displayWeekOfOccurrence_doesNotPullWeek2IntoWeek1WhenTermStartsSunday() {
         val termStart = ScheduleWeekClock.localEpochDay(2026, 8, 30) // Sunday
         assertEquals(7, ScheduleWeekClock.weekdayOf(termStart))

@@ -20,8 +20,14 @@ class ScheduleTodayWidgetProvider : AppWidgetProvider() {
         val settings = PrefsScheduleSettingsStore(context).load()
         val today = ScheduleWeekClock.todayEpochDay()
         val weekday = ScheduleWeekClock.todayWeekday()
-        val actualWeek = ScheduleWeekClock.actualWeek(settings.termStartEpochDay, today)
-        val cards = ScheduleWidgetPresentation.todayCards(document, actualWeek, weekday)
+        val actualWeek = ScheduleWeekClock.actualWeek(settings.termStartEpochDay, today, settings.weekStartDay)
+        val cards = ScheduleWidgetPresentation.todayCards(
+            document,
+            actualWeek,
+            weekday,
+            weekStartDay = settings.weekStartDay,
+            termStartEpochDay = settings.termStartEpochDay,
+        )
         val title = when {
             document == null -> "暂无课表缓存"
             settings.termStartEpochDay == null -> "请先设定开学日"
@@ -30,7 +36,13 @@ class ScheduleTodayWidgetProvider : AppWidgetProvider() {
         val emptyCopy = when {
             document == null -> "打开课表同步"
             settings.termStartEpochDay == null || actualWeek == null -> "开学日前不展示课表"
-            ScheduleWidgetPresentation.dayCards(document, actualWeek, weekday).isEmpty() ->
+            ScheduleWidgetPresentation.dayCards(
+                document,
+                actualWeek,
+                weekday,
+                weekStartDay = settings.weekStartDay,
+                termStartEpochDay = settings.termStartEpochDay,
+            ).isEmpty() ->
                 ScheduleWidgetPresentation.noClassCopy
             cards.isEmpty() -> ScheduleWidgetPresentation.finishedCopy
             else -> ""
@@ -87,13 +99,19 @@ class ScheduleWeekWidgetProvider : AppWidgetProvider() {
             val offset = ScheduleDayPagerStore.loadOffset(context, appWidgetId)
             val selectedDay = ScheduleDayPagerPolicy.selectedEpochDay(today, offset)
             val weekday = ScheduleWeekClock.weekdayOf(selectedDay)
-            val week = ScheduleWeekClock.actualWeek(settings.termStartEpochDay, selectedDay)
+            val week = ScheduleWeekClock.actualWeek(settings.termStartEpochDay, selectedDay, settings.weekStartDay)
             val title = when {
                 document == null -> "暂无课表缓存"
                 settings.termStartEpochDay == null -> "请先设定开学日"
                 else -> ScheduleDayPagerPolicy.title(offset, weekday, week, selectedDay)
             }
-            val cards = ScheduleWidgetPresentation.dayCards(document, week, weekday)
+            val cards = ScheduleWidgetPresentation.dayCards(
+                document,
+                week,
+                weekday,
+                weekStartDay = settings.weekStartDay,
+                termStartEpochDay = settings.termStartEpochDay,
+            )
             val emptyCopy = when {
                 document == null -> "打开课表同步"
                 settings.termStartEpochDay == null || week == null -> "开学日前不展示课表"

@@ -254,6 +254,8 @@ fun JwxtScheduleScreen(
                                     week = todayWeek,
                                     onItemClick = { viewModel.openEvent(it.eventId) },
                                     modifier = Modifier.fillMaxSize(),
+                                    weekStartDay = state.weekStartDay,
+                                    termStartEpochDay = state.termStartEpochDay,
                                 )
                             }
                         }

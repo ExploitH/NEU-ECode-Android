@@ -1,5 +1,7 @@
 package com.neko.neuecode.domain.jwxt
 
+import com.neko.neuecode.data.local.schedule.WeekStartDay
+
 /**
  * Stable hue in [0, 360) from a courseKey. Independent hash — not copied from Sleepy.
  */
@@ -22,10 +24,26 @@ object ScheduleWeekClock {
         return ((delta / 7L) + 1L).toInt().coerceAtLeast(1)
     }
 
+    fun weekOf(
+        termStartEpochDay: Long?,
+        todayEpochDay: Long,
+        weekStartDay: WeekStartDay,
+    ): Int {
+        return ScheduleWeekLayout.displayWeekOfDate(termStartEpochDay, todayEpochDay, weekStartDay)
+    }
+
     fun actualWeek(termStartEpochDay: Long?, todayEpochDay: Long): Int? {
         if (termStartEpochDay == null) return null
         if (todayEpochDay < termStartEpochDay) return null
         return weekOf(termStartEpochDay, todayEpochDay)
+    }
+
+    fun actualWeek(
+        termStartEpochDay: Long?,
+        todayEpochDay: Long,
+        weekStartDay: WeekStartDay,
+    ): Int? {
+        return ScheduleWeekLayout.actualDisplayWeek(termStartEpochDay, todayEpochDay, weekStartDay)
     }
 
     fun weekdayOf(epochDay: Long): Int {

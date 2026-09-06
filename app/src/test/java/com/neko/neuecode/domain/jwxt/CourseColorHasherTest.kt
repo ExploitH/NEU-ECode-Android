@@ -1,7 +1,9 @@
 package com.neko.neuecode.domain.jwxt
 
+import com.neko.neuecode.data.local.schedule.WeekStartDay
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -44,6 +46,20 @@ class ScheduleWeekClockTest {
         assertEquals(null, ScheduleWeekClock.actualWeek(termStartEpochDay = 10_000L, todayEpochDay = 9_999L))
         assertEquals(1, ScheduleWeekClock.actualWeek(termStartEpochDay = 10_000L, todayEpochDay = 10_000L))
         assertEquals(null, ScheduleWeekClock.actualWeek(termStartEpochDay = null, todayEpochDay = 10_000L))
+    }
+
+    @Test
+    fun actualWeek_sundayFirstPutsSep6InWeek2WhenTermStartsMonday() {
+        val termStart = ScheduleWeekClock.localEpochDay(2026, 8, 31)
+        val sep5 = ScheduleWeekClock.localEpochDay(2026, 9, 5)
+        val sep6 = ScheduleWeekClock.localEpochDay(2026, 9, 6)
+        val aug30 = ScheduleWeekClock.localEpochDay(2026, 8, 30)
+        assertEquals(1, ScheduleWeekClock.weekOf(termStart, sep6))
+        assertEquals(2, ScheduleWeekClock.weekOf(termStart, sep6, WeekStartDay.SUNDAY))
+        assertEquals(1, ScheduleWeekClock.weekOf(termStart, sep5, WeekStartDay.SUNDAY))
+        assertEquals(1, ScheduleWeekClock.actualWeek(termStart, sep6))
+        assertEquals(2, ScheduleWeekClock.actualWeek(termStart, sep6, WeekStartDay.SUNDAY))
+        assertNull(ScheduleWeekClock.actualWeek(termStart, aug30, WeekStartDay.SUNDAY))
     }
 
     @Test

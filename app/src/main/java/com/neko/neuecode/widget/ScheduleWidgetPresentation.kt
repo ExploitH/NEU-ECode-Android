@@ -1,5 +1,6 @@
 package com.neko.neuecode.widget
 
+import com.neko.neuecode.data.local.schedule.WeekStartDay
 import com.neko.neuecode.domain.jwxt.CourseColorHasher
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.SchedulePresentation
@@ -30,10 +31,18 @@ object ScheduleWidgetPresentation {
         todayWeekday: Int,
         nowMinutes: Int = currentMinutesOfDay(),
         limit: Int = 4,
+        weekStartDay: WeekStartDay = WeekStartDay.MONDAY,
+        termStartEpochDay: Long? = null,
     ): List<String> {
         if (document == null) return listOf("暂无课表缓存", "打开课表同步")
         if (actualWeek == null) return listOf("学期尚未开始", "请在课表设定开学日")
-        val items = SchedulePresentation.todayItems(document, todayWeekday, actualWeek)
+        val items = SchedulePresentation.todayItems(
+            document,
+            todayWeekday,
+            actualWeek,
+            weekStartDay = weekStartDay,
+            termStartEpochDay = termStartEpochDay,
+        )
         if (items.isEmpty()) return listOf(noClassCopy)
         val remaining = remainingTodayItems(items, nowMinutes)
         if (remaining.isEmpty()) return listOf(finishedCopy)
@@ -47,10 +56,18 @@ object ScheduleWidgetPresentation {
         actualWeek: Int?,
         todayWeekday: Int,
         nowMinutes: Int = currentMinutesOfDay(),
+        weekStartDay: WeekStartDay = WeekStartDay.MONDAY,
+        termStartEpochDay: Long? = null,
     ): List<DayCard> {
         if (document == null || actualWeek == null) return emptyList()
         return remainingTodayItems(
-            items = SchedulePresentation.todayItems(document, todayWeekday, actualWeek),
+            items = SchedulePresentation.todayItems(
+                document,
+                todayWeekday,
+                actualWeek,
+                weekStartDay = weekStartDay,
+                termStartEpochDay = termStartEpochDay,
+            ),
             nowMinutes = nowMinutes,
         ).map(::toDayCard)
     }
@@ -59,9 +76,17 @@ object ScheduleWidgetPresentation {
         document: JwxtScheduleDocument?,
         week: Int?,
         weekday: Int,
+        weekStartDay: WeekStartDay = WeekStartDay.MONDAY,
+        termStartEpochDay: Long? = null,
     ): List<DayCard> {
         if (document == null || week == null) return emptyList()
-        return SchedulePresentation.todayItems(document, weekday, week).map(::toDayCard)
+        return SchedulePresentation.todayItems(
+            document,
+            weekday,
+            week,
+            weekStartDay = weekStartDay,
+            termStartEpochDay = termStartEpochDay,
+        ).map(::toDayCard)
     }
 
     private fun toDayCard(item: ScheduleTodayItem): DayCard {

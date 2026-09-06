@@ -51,9 +51,15 @@ object ScheduleWidgetMidnightAlarm {
         val settings = PrefsScheduleSettingsStore(context).load()
         val today = ScheduleWeekClock.todayEpochDay()
         val weekday = ScheduleWeekClock.todayWeekday()
-        val actualWeek = ScheduleWeekClock.actualWeek(settings.termStartEpochDay, today) ?: return null
+        val actualWeek = ScheduleWeekClock.actualWeek(settings.termStartEpochDay, today, settings.weekStartDay) ?: return null
         val nowMinutes = ScheduleWidgetPresentation.currentMinutesOfDay()
-        val items = SchedulePresentation.todayItems(document, weekday, actualWeek)
+        val items = SchedulePresentation.todayItems(
+            document,
+            weekday,
+            actualWeek,
+            weekStartDay = settings.weekStartDay,
+            termStartEpochDay = settings.termStartEpochDay,
+        )
         val nextMinutes = ScheduleWidgetPresentation.nextRefreshMinutes(items, nowMinutes) ?: return null
         return Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, nextMinutes / 60)
