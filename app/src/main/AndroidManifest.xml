@@ -96,6 +96,18 @@
         </receiver>
 
         <receiver
+            android:name=".widget.ExamWidgetProvider"
+            android:exported="false"
+            android:label="我的考试">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/exam_widget_info" />
+        </receiver>
+
+        <receiver
             android:name=".widget.ScheduleWeekWidgetProvider"
             android:exported="false"
             android:label="课表·单日">

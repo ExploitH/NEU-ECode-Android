@@ -16,17 +16,21 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.local.datastore.UserPreferences
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
+import com.neko.neuecode.ui.screen.academic.JwxtAcademicScreen
 import com.neko.neuecode.ui.screen.intranet.IntranetVpnScreen
 import com.neko.neuecode.ui.screen.paycode.ECodeWebViewScreen
 import com.neko.neuecode.ui.screen.paycode.PayCodeScreen
@@ -59,6 +63,15 @@ fun MainAppScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute == null || MainDestinations.isBottomBar(currentRoute)
+    val graphStart = when {
+        initialStartRoute == MainDestinations.widgetExamRoute -> MainDestinations.ME
+        else -> MainDestinations.resolveStartRoute(initialStartRoute)
+    }
+    LaunchedEffect(initialStartRoute) {
+        if (initialStartRoute == MainDestinations.widgetExamRoute) {
+            navController.navigate(MainDestinations.widgetExamRoute)
+        }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -87,7 +100,7 @@ fun MainAppScreen(
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = MainDestinations.resolveStartRoute(initialStartRoute),
+            startDestination = graphStart,
             modifier = Modifier.padding(paddingValues),
             enterTransition = {
                 fadeIn(tween(220)) + slideIntoContainer(
@@ -143,6 +156,8 @@ fun MainAppScreen(
                     authRepository = authRepository,
                     onLogout = onLogout,
                     onOpenIntranet = { navController.navigate(MainDestinations.INTRANET) },
+                    onOpenScores = { navController.navigate(MainDestinations.academicRoute(MainDestinations.SCORES)) },
+                    onOpenExams = { navController.navigate(MainDestinations.academicRoute(MainDestinations.EXAMS)) },
                 )
             }
 
@@ -156,6 +171,25 @@ fun MainAppScreen(
 
             composable(MainDestinations.INTRANET) {
                 IntranetVpnScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(
+                route = MainDestinations.ACADEMIC,
+                arguments = listOf(navArgument("kind") { type = NavType.StringType }),
+            ) {
+                JwxtAcademicScreen(
+                    onBack = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(MainDestinations.ME) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    inclusive = true
+                                }
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    onOpenIntranet = { navController.navigate(MainDestinations.INTRANET) },
+                )
             }
         }
     }

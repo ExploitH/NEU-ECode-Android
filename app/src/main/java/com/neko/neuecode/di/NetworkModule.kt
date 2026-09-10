@@ -6,6 +6,7 @@ import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.remote.NeuCampusHttp
 import com.neko.neuecode.data.remote.api.PersonalApi
 import com.neko.neuecode.data.remote.ecode.ECodePayCodeApi
+import com.neko.neuecode.data.remote.jwxt.JwxtAcademicClient
 import com.neko.neuecode.data.remote.jwxt.JwxtCasAuthenticator
 import com.neko.neuecode.data.remote.jwxt.JwxtScheduleClient
 import com.neko.neuecode.data.remote.model.AppLoginResponse
@@ -137,6 +138,12 @@ object NetworkModule {
     @Singleton
     fun provideJwxtScheduleClient(okHttpClient: OkHttpClient): JwxtScheduleClient {
         return JwxtScheduleClient(okHttpClient)
+    }
+
+    @Provides
+    @Singleton
+    fun provideJwxtAcademicClient(okHttpClient: OkHttpClient): JwxtAcademicClient {
+        return JwxtAcademicClient(okHttpClient)
     }
 
     @Provides

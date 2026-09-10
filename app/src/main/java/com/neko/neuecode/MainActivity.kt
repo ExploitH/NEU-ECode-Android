@@ -83,10 +83,13 @@ class MainActivity : ComponentActivity() {
         val requestedStartRoute = intent.getStringExtra(EXTRA_START_ROUTE)
         val initialStartRoute = MainDestinations.resolveStartRoute(requestedStartRoute)
         val scheduleWidgetLaunch = MainDestinations.shouldRefreshScheduleWidgets(requestedStartRoute)
+        val examWidgetLaunch = requestedStartRoute == MainDestinations.widgetExamRoute
         Timber.d(
-            "MainActivity initial route=%s scheduleWidgetLaunch=%s",
+            "MainActivity initial route=%s scheduleWidgetLaunch=%s examWidgetLaunch=%s examAutoSync=%s",
             initialStartRoute,
             scheduleWidgetLaunch,
+            examWidgetLaunch,
+            MainDestinations.shouldTriggerExamSync(requestedStartRoute),
         )
         if (savedInstanceState == null && scheduleWidgetLaunch) {
             scheduleWidgetRefresher.refresh()

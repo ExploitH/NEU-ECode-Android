@@ -42,6 +42,17 @@ class MainDestinationsTest {
     }
 
     @Test
+    fun academicRoutes_areSecondaryAndNotInBottomBar() {
+        assertEquals("academic/scores", MainDestinations.academicRoute(MainDestinations.SCORES))
+        assertEquals("academic/exams", MainDestinations.academicRoute(MainDestinations.EXAMS))
+        assertTrue(MainDestinations.isSecondary("academic/scores"))
+        assertTrue(MainDestinations.isSecondary("academic/exams"))
+        assertFalse(MainDestinations.isBottomBar("academic/scores"))
+        assertFalse(MainDestinations.bottomBar.contains("scores"))
+        assertFalse(MainDestinations.bottomBar.contains("exams"))
+    }
+
+    @Test
     fun ecodeWebView_isNotABottomBarDestination() {
         assertFalse(MainDestinations.isBottomBar(MainDestinations.ECODE_WEBVIEW))
         assertFalse(MainDestinations.bottomBar.contains(MainDestinations.ECODE_WEBVIEW))
@@ -68,5 +79,10 @@ class MainDestinationsTest {
         assertTrue(MainDestinations.shouldRefreshScheduleWidgets("schedule"))
         assertFalse(MainDestinations.shouldRefreshScheduleWidgets(null))
         assertFalse(MainDestinations.shouldRefreshScheduleWidgets("unexpected"))
+        assertEquals(MainDestinations.widgetExamRoute, MainDestinations.resolveStartRoute("academic/exams"))
+        assertTrue(MainDestinations.isSecondary("academic/exams"))
+        assertFalse(MainDestinations.shouldTriggerExamSync("academic/exams"))
+        assertFalse(MainDestinations.shouldTriggerExamSync(MainDestinations.widgetExamRoute))
+        assertFalse(MainDestinations.shouldRefreshScheduleWidgets(MainDestinations.widgetExamRoute))
     }
 }

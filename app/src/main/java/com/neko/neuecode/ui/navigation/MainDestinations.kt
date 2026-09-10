@@ -13,6 +13,9 @@ object MainDestinations {
     const val RECHARGE = "recharge"
     const val INTRANET = "intranet"
     const val ECODE_WEBVIEW = "ecodeWebView"
+    const val SCORES = "scores"
+    const val EXAMS = "exams"
+    const val ACADEMIC = "academic/{kind}"
 
     const val LABEL_PAY = "付款码"
     const val LABEL_SCHEDULE = "课表"
@@ -20,6 +23,8 @@ object MainDestinations {
 
     val bottomBar: List<String> = listOf(PAY, SCHEDULE, ME)
     val secondary: List<String> = listOf(RECHARGE, INTRANET, ECODE_WEBVIEW)
+
+    fun academicRoute(kind: String): String = "academic/$kind"
 
     /** Route used when protocol pay-code fetch fails and user taps 「打开付款码」. */
     val openPayCodeRoute: String
@@ -31,9 +36,11 @@ object MainDestinations {
 
     /** Start route requested by both schedule home-screen widgets. */
     const val widgetStartRoute: String = SCHEDULE
+    const val widgetExamRoute: String = "academic/exams"
 
     fun resolveStartRoute(requestedRoute: String?): String {
         if (requestedRoute == widgetStartRoute) return SCHEDULE
+        if (requestedRoute == widgetExamRoute) return widgetExamRoute
         return com.neko.neuecode.domain.ecode.EcodeModuleAvailability.defaultStartRoute()
     }
 
@@ -41,6 +48,11 @@ object MainDestinations {
         return requestedRoute == widgetStartRoute
     }
 
+    /** Exam widget / exam page never auto-syncs; only the in-page 同步 button fetches. */
+    @Suppress("UNUSED_PARAMETER")
+    fun shouldTriggerExamSync(requestedRoute: String?): Boolean = false
+
     fun isBottomBar(route: String): Boolean = route in bottomBar
-    fun isSecondary(route: String): Boolean = route in secondary
+    fun isSecondary(route: String): Boolean =
+        route in secondary || route.startsWith("academic/")
 }

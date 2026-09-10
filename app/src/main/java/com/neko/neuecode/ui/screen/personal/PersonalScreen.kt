@@ -28,6 +28,8 @@ fun PersonalScreen(
     authRepository: AuthRepository,
     onLogout: () -> Unit,
     onOpenIntranet: () -> Unit = {},
+    onOpenScores: () -> Unit = {},
+    onOpenExams: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -126,6 +128,18 @@ fun PersonalScreen(
                     icon = Icons.Default.VpnLock,
                     label = "内网连接",
                     onClick = onOpenIntranet
+                )
+
+                SettingItem(
+                    icon = Icons.Default.Event,
+                    label = "考试",
+                    onClick = onOpenExams
+                )
+
+                SettingItem(
+                    icon = Icons.Default.Grade,
+                    label = "成绩",
+                    onClick = onOpenScores
                 )
 
                 SettingItem(
