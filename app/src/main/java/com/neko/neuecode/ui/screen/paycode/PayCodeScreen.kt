@@ -59,6 +59,7 @@ import coil.compose.AsyncImage
 import com.neko.neuecode.domain.model.Balance
 import com.neko.neuecode.ui.components.BrandLoadingMark
 import com.neko.neuecode.ui.components.Panel
+import com.neko.neuecode.ui.components.PanelDivider
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,7 +71,6 @@ fun PayCodeScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val refreshEnabled = state.fetchEnabled && !state.awaitingSms
-    val busy = state.isSyncingBalance || state.home.status == PayCodeHomeStatus.Loading
 
     Scaffold(
         topBar = {
@@ -80,9 +80,9 @@ fun PayCodeScreen(
                 actions = {
                     IconButton(
                         onClick = { viewModel.refresh() },
-                        enabled = refreshEnabled && !busy,
+                        enabled = refreshEnabled && !state.codeRefreshing,
                     ) {
-                        if (busy && refreshEnabled) {
+                        if (state.codeRefreshing) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
                             Icon(Icons.Outlined.Refresh, contentDescription = "刷新")
@@ -121,8 +121,10 @@ fun PayCodeScreen(
 
             PayCodeSwitchPanel(
                 enabled = state.fetchEnabled,
+                autoRefresh = state.autoRefresh,
                 hint = state.switchHint.ifBlank { state.home.switchHint },
-                onCheckedChange = viewModel::setFetchEnabled,
+                onEnabledChange = viewModel::setFetchEnabled,
+                onAutoRefreshChange = viewModel::setAutoRefresh,
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -182,11 +184,17 @@ private fun PayCodeHero(
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                TtlCountdown(payload = payload, ttlSeconds = state.home.ttlSeconds)
+                TtlCountdown(
+                    payload = payload,
+                    ttlSeconds = state.home.ttlSeconds,
+                    autoRefresh = state.autoRefresh,
+                    refreshing = state.codeRefreshing,
+                )
             }
         }
         else -> {
             val off = !state.fetchEnabled
+            val manual = !off && !state.autoRefresh && state.home.syncHint == PayCodeViewModel.MANUAL_REFRESH_HINT
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth(),
@@ -199,10 +207,18 @@ private fun PayCodeHero(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = if (off) "自动取码已关闭" else "暂未取到付款码",
+                    text = when {
+                        off -> "e码通已关闭"
+                        manual -> "点击获取付款码"
+                        else -> "暂未取到付款码"
+                    },
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 )
-                val hint = if (off) "打开下方「自动取码」后才会取码" else state.home.syncHint
+                val hint = when {
+                    off -> "打开下方「启用 e码通」后才会取码"
+                    manual -> "自动刷新已关闭，付款码不会自动更新"
+                    else -> state.home.syncHint
+                }
                 if (!hint.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
@@ -212,7 +228,12 @@ private fun PayCodeHero(
                         textAlign = TextAlign.Center,
                     )
                 }
-                if (state.home.showOpenPayCodeButton) {
+                if (manual) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(onClick = { viewModel.refresh() }, enabled = !state.codeRefreshing) {
+                        Text(if (state.codeRefreshing) "获取中…" else "获取付款码")
+                    }
+                } else if (state.home.showOpenPayCodeButton) {
                     Spacer(modifier = Modifier.height(20.dp))
                     Button(onClick = onOpenPayCode) {
                         Text(PayCodeHomePresentation.OPEN_PAY_CODE_LABEL)
@@ -225,7 +246,12 @@ private fun PayCodeHero(
 
 /** Local countdown for the current payload; the ViewModel owns the actual refresh. */
 @Composable
-private fun TtlCountdown(payload: String?, ttlSeconds: Int?) {
+private fun TtlCountdown(
+    payload: String?,
+    ttlSeconds: Int?,
+    autoRefresh: Boolean,
+    refreshing: Boolean,
+) {
     val colors = MaterialTheme.colorScheme
     val total = ttlSeconds?.takeIf { it > 0 }
     if (total == null) {
@@ -258,7 +284,13 @@ private fun TtlCountdown(payload: String?, ttlSeconds: Int?) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = if (remaining > 0) "${remaining} 秒后自动刷新" else "正在刷新…",
+            text = when {
+                refreshing -> "正在获取新码…"
+                remaining > 0 && autoRefresh -> "${remaining} 秒后自动刷新"
+                remaining > 0 -> "${remaining} 秒后过期"
+                autoRefresh -> "即将刷新…"
+                else -> "已过期，请点击右上角刷新"
+            },
             style = MaterialTheme.typography.bodySmall,
             color = colors.onSurfaceVariant,
         )
@@ -331,27 +363,26 @@ private fun BalancePanel(
 @Composable
 private fun PayCodeSwitchPanel(
     enabled: Boolean,
+    autoRefresh: Boolean,
     hint: String?,
-    onCheckedChange: (Boolean) -> Unit,
+    onEnabledChange: (Boolean) -> Unit,
+    onAutoRefreshChange: (Boolean) -> Unit,
 ) {
     Panel {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("自动取码", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = if (enabled) "按有效期自动刷新付款码" else "关闭时不取码、不自动刷新",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Switch(checked = enabled, onCheckedChange = onCheckedChange)
-        }
+        SwitchRow(
+            title = "启用 e码通",
+            subtitle = if (enabled) "取码并同步校园卡余额" else "关闭时不取码、不刷新余额",
+            checked = enabled,
+            onCheckedChange = onEnabledChange,
+        )
+        PanelDivider(startIndent = 20.dp)
+        SwitchRow(
+            title = "自动刷新二维码",
+            subtitle = if (autoRefresh) "到期前自动换新码，遇到短信验证会自动停止" else "关闭后需手动点刷新才出码",
+            checked = autoRefresh,
+            enabled = enabled,
+            onCheckedChange = onAutoRefreshChange,
+        )
         if (!hint.isNullOrBlank()) {
             Text(
                 text = hint,
@@ -360,6 +391,38 @@ private fun PayCodeSwitchPanel(
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 14.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (enabled) colors.onSurface else colors.onSurface.copy(alpha = 0.38f),
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (enabled) colors.onSurfaceVariant else colors.onSurfaceVariant.copy(alpha = 0.38f),
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }
 

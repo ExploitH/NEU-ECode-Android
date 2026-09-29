@@ -13,13 +13,23 @@ class PayCodeYhtSmsGateTest {
             userInitiated = false,
             currentSwitchOn = true,
         )
-        assertFalse(next.userSwitchOn)
+        assertTrue(next.userSwitchOn)
+        assertFalse(next.autoRefreshOn)
         assertTrue(next.lockedBySms)
         assertEquals(PayCodeFetchGate.AUTO_SMS_HINT, next.switchHint)
         assertFalse(
             PayCodeRefreshPolicy.shouldContinueAutoFetch(
                 awaitingSms = true,
                 fetchEnabled = next.userSwitchOn,
+                autoRefresh = next.autoRefreshOn,
+            ),
+        )
+        // Even once the SMS lock clears, the loop stays off until the user re-enables it.
+        assertFalse(
+            PayCodeRefreshPolicy.shouldContinueAutoFetch(
+                awaitingSms = false,
+                fetchEnabled = next.userSwitchOn,
+                autoRefresh = next.autoRefreshOn,
             ),
         )
     }

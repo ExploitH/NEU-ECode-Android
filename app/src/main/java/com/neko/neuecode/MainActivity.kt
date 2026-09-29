@@ -224,8 +224,13 @@ fun MainNavigation(
                 NativeLoginScreen(
                     onLoginSuccess = {
                         scope.launch {
-                            sessionState = authRepository.checkSession()
-                            showLogin = false
+                            val state = authRepository.checkSession()
+                            sessionState = state
+                            showLogin = when (state) {
+                                is SessionState.Authenticated -> false
+                                is SessionState.Error -> state.needRelogin
+                                else -> true
+                            }
                         }
                     }
                 )

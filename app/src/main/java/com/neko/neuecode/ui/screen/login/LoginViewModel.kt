@@ -147,6 +147,17 @@ class LoginViewModel @Inject constructor(
         }
     }
     
+    /**
+     * The ViewModel is Activity-scoped, so a stale [LoginUiState.Success] would
+     * re-fire onLoginSuccess when the login screen returns after logout.
+     */
+    fun consumeSuccess() {
+        if (_uiState.value is LoginUiState.Success) {
+            successEmitted = false
+            _uiState.value = LoginUiState.Idle
+        }
+    }
+
     fun resetState() {
         if (!successEmitted) {
             _uiState.value = LoginUiState.Idle

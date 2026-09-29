@@ -89,9 +89,9 @@ fun Panel(
 }
 
 @Composable
-fun PanelDivider() {
+fun PanelDivider(startIndent: Dp = 56.dp) {
     HorizontalDivider(
-        modifier = Modifier.padding(start = 56.dp),
+        modifier = Modifier.padding(start = startIndent),
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
     )
 }

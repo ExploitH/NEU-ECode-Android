@@ -46,6 +46,10 @@ data class PayCodeUiState(
     val sendingSms: Boolean = false,
     val submittingSms: Boolean = false,
     val yhtSms: Boolean = false,
+    /** 「自动刷新二维码」: renew the code before its TTL runs out. */
+    val autoRefresh: Boolean = true,
+    /** A fetch is in flight; the current QR (if any) stays on screen meanwhile. */
+    val codeRefreshing: Boolean = false,
 )
 
 @HiltViewModel
@@ -76,21 +80,25 @@ class PayCodeViewModel @Inject constructor(
             val enabled = userPreferences.isPayCodeFetchEnabled()
             val locked = userPreferences.isPayCodeSmsLocked()
             val hint = userPreferences.payCodeSwitchHint()
+            val autoRefresh = userPreferences.isPayCodeAutoRefreshEnabled()
+            val fetchOnOpen = EcodeModuleAvailability.shouldFetchPayCode() && enabled && autoRefresh
             _uiState.value = _uiState.value.copy(
                 fetchEnabled = enabled,
                 awaitingSms = locked,
                 switchHint = hint,
-                home = if (EcodeModuleAvailability.shouldFetchPayCode() && enabled) {
+                autoRefresh = autoRefresh,
+                home = if (fetchOnOpen && !locked) {
                     PayCodeHomePresentation.loading(fetchEnabled = true, switchHint = hint)
                 } else {
                     PayCodeHomePresentation.idle(
                         fetchEnabled = enabled,
                         switchHint = hint,
                         awaitingSms = locked,
+                        message = manualHint(enabled, autoRefresh),
                     )
                 },
             )
-            if (EcodeModuleAvailability.shouldFetchPayCode() && enabled && !locked) {
+            if (fetchOnOpen && !locked) {
                 refresh(userInitiated = true)
             } else {
                 stopAutoFetch()
@@ -105,6 +113,25 @@ class PayCodeViewModel @Inject constructor(
     fun refresh() {
         refresh(userInitiated = true)
     }
+
+    fun setAutoRefresh(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferences.setPayCodeAutoRefreshEnabled(enabled)
+            _uiState.value = _uiState.value.copy(autoRefresh = enabled)
+            if (!enabled) {
+                stopAutoFetch()
+                return@launch
+            }
+            val state = _uiState.value
+            if (state.fetchEnabled && !state.awaitingSms && !state.codeRefreshing) {
+                refresh(userInitiated = true)
+            }
+        }
+    }
+
+    /** Hint for the empty hero when the user has to tap refresh themselves. */
+    private fun manualHint(fetchEnabled: Boolean, autoRefresh: Boolean): String? =
+        if (fetchEnabled && !autoRefresh) MANUAL_REFRESH_HINT else null
 
     fun updateGraphicCaptcha(value: String) {
         _uiState.value = _uiState.value.copy(graphicCaptcha = value.filter(Char::isLetterOrDigit).take(8))
@@ -265,6 +292,19 @@ class PayCodeViewModel @Inject constructor(
                 return@launch
             }
             _uiState.value = _uiState.value.copy(fetchEnabled = true)
+            if (!_uiState.value.awaitingSms && !_uiState.value.autoRefresh) {
+                // Manual mode: turning e码通 on does not fetch until the user taps refresh.
+                if (_uiState.value.home.status != PayCodeHomeStatus.Ready) {
+                    _uiState.value = _uiState.value.copy(
+                        home = PayCodeHomePresentation.idle(
+                            fetchEnabled = true,
+                            switchHint = _uiState.value.switchHint,
+                            message = MANUAL_REFRESH_HINT,
+                        ),
+                    )
+                }
+                return@launch
+            }
             if (_uiState.value.awaitingSms) {
                 _uiState.value = _uiState.value.copy(
                     home = PayCodeHomePresentation.from(
@@ -292,29 +332,40 @@ class PayCodeViewModel @Inject constructor(
         val fetchEnabled = _uiState.value.fetchEnabled
         if (!PayCodeRefreshPolicy.canRefreshPayCode(
                 awaitingSms = _uiState.value.awaitingSms && !userInitiated,
-                isRefreshing = _uiState.value.home.status == PayCodeHomeStatus.Loading,
+                isRefreshing = _uiState.value.codeRefreshing,
                 fetchEnabled = fetchEnabled,
             )
         ) {
             return
         }
+        val autoRefresh = _uiState.value.autoRefresh
         if (!userInitiated && !PayCodeRefreshPolicy.shouldContinueAutoFetch(
                 awaitingSms = _uiState.value.awaitingSms,
                 fetchEnabled = fetchEnabled,
+                autoRefresh = autoRefresh,
             )
         ) {
             stopAutoFetch()
             return
         }
+        // Mark in flight synchronously so a second tap cannot start a parallel fetch.
+        _uiState.value = _uiState.value.copy(codeRefreshing = true)
         viewModelScope.launch {
+            // Keep the current QR visible while the next one loads; it is swapped in place.
+            val hasQr = _uiState.value.home.status == PayCodeHomeStatus.Ready && _uiState.value.home.showNativeQr
             _uiState.value = _uiState.value.copy(
-                home = PayCodeHomePresentation.loading(
-                    fetchEnabled = fetchEnabled,
-                    switchHint = _uiState.value.switchHint,
-                ),
+                home = if (hasQr) {
+                    _uiState.value.home
+                } else {
+                    PayCodeHomePresentation.loading(
+                        fetchEnabled = fetchEnabled,
+                        switchHint = _uiState.value.switchHint,
+                    )
+                },
                 isSyncingBalance = true,
                 balanceError = null,
             )
+            try {
             coroutineScope {
                 val balanceJob = async { personalRepository.getBalance() }
                 val payCodeJob = async { payCodeRepository.fetchPayCode() }
@@ -349,18 +400,23 @@ class PayCodeViewModel @Inject constructor(
                     PayCodeFetchGate.afterNeedSms(
                         userInitiated = userInitiated,
                         currentSwitchOn = fetchEnabled,
+                        currentAutoRefresh = _uiState.value.autoRefresh,
                     )
                 } else if (payCode is PayCodeParseResult.Success) {
-                    PayCodeFetchGate.afterSuccess()
+                    PayCodeFetchGate.afterSuccess(currentAutoRefresh = _uiState.value.autoRefresh)
                 } else {
                     PayCodeSwitchSnapshot(
                         userSwitchOn = fetchEnabled,
                         lockedBySms = false,
                         switchHint = _uiState.value.switchHint,
+                        autoRefreshOn = _uiState.value.autoRefresh,
                     )
                 }
                 if (snapshot.userSwitchOn != fetchEnabled) {
                     userPreferences.setPayCodeFetchEnabled(snapshot.userSwitchOn)
+                }
+                if (snapshot.autoRefreshOn != _uiState.value.autoRefresh) {
+                    userPreferences.setPayCodeAutoRefreshEnabled(snapshot.autoRefreshOn)
                 }
                 userPreferences.setPayCodeSmsLock(snapshot.lockedBySms, snapshot.switchHint)
                 if (!casSms && payCode is PayCodeParseResult.Success) {
@@ -388,6 +444,7 @@ class PayCodeViewModel @Inject constructor(
                     awaitingSms = snapshot.lockedBySms,
                     fetchEnabled = snapshot.userSwitchOn,
                     switchHint = snapshot.switchHint,
+                    autoRefresh = snapshot.autoRefreshOn,
                     yhtSms = yhtSms,
                     captchaImageUrl = if (snapshot.lockedBySms && casSms) {
                         _uiState.value.captchaImageUrl ?: secondAuthClient.refreshCaptchaUrl()
@@ -398,7 +455,10 @@ class PayCodeViewModel @Inject constructor(
                     balanceError = if (yhtSms) null else _uiState.value.balanceError,
                 )
                 persistWidgetQr(payCode)
-                scheduleAutoFetch(payCode, snapshot.lockedBySms, snapshot.userSwitchOn)
+                scheduleAutoFetch(payCode, snapshot.lockedBySms, snapshot.userSwitchOn, snapshot.autoRefreshOn)
+            }
+            } finally {
+                _uiState.value = _uiState.value.copy(codeRefreshing = false)
             }
         }
     }
@@ -407,10 +467,11 @@ class PayCodeViewModel @Inject constructor(
         result: PayCodeParseResult,
         awaitingSms: Boolean,
         fetchEnabled: Boolean,
+        autoRefresh: Boolean,
     ) {
         autoFetchJob?.cancel()
         autoFetchJob = null
-        if (!PayCodeRefreshPolicy.shouldContinueAutoFetch(awaitingSms, fetchEnabled)) {
+        if (!PayCodeRefreshPolicy.shouldContinueAutoFetch(awaitingSms, fetchEnabled, autoRefresh)) {
             return
         }
         val delayMs = PayCodeRefreshPolicy.nextAutoFetchDelayMs(
@@ -418,10 +479,12 @@ class PayCodeViewModel @Inject constructor(
             ttlSeconds = (result as? PayCodeParseResult.Success)?.code?.ttlSeconds,
             awaitingSms = awaitingSms,
             fetchEnabled = fetchEnabled,
+            autoRefresh = autoRefresh,
         ) ?: return
         autoFetchJob = viewModelScope.launch {
             delay(delayMs)
-            if (!PayCodeRefreshPolicy.shouldContinueAutoFetch(_uiState.value.awaitingSms, _uiState.value.fetchEnabled)) {
+            val state = _uiState.value
+            if (!PayCodeRefreshPolicy.shouldContinueAutoFetch(state.awaitingSms, state.fetchEnabled, state.autoRefresh)) {
                 return@launch
             }
             refresh(userInitiated = false)
@@ -456,5 +519,9 @@ class PayCodeViewModel @Inject constructor(
             }
             ECodeWidgetProvider.notifyViews(application)
         }
+    }
+
+    companion object {
+        const val MANUAL_REFRESH_HINT = "自动刷新已关闭，点击刷新获取付款码"
     }
 }

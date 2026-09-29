@@ -56,7 +56,7 @@ object PayCodeHomePresentation {
             showNativeQr = false,
             payload = null,
             ttlSeconds = null,
-            syncHint = message ?: if (fetchEnabled) "打开开关后才会取码" else "取码开关已关闭，不会自动刷新或取码",
+            syncHint = message ?: if (fetchEnabled) "点击刷新获取付款码" else "e码通已关闭，不会取码或刷新",
             fetchEnabled = fetchEnabled,
             switchHint = switchHint,
             showSmsChallenge = awaitingSms,

@@ -33,17 +33,36 @@ class PayCodeFetchGateTest {
     }
 
     @Test
-    fun autoRefreshHitsSms_turnsSwitchOffAndKeepsHint() {
+    fun autoRefreshHitsSms_turnsAutoRefreshOffAndKeepsHint() {
         val next = PayCodeFetchGate.afterNeedSms(
             userInitiated = false,
             currentSwitchOn = true,
+            currentAutoRefresh = true,
         )
-        assertFalse(next.userSwitchOn)
+        assertTrue(next.userSwitchOn)
+        assertFalse(next.autoRefreshOn)
         assertTrue(next.lockedBySms)
-        assertEquals(
-            "自动刷新触发了短信验证，已关闭取码开关。请手动打开开关并完成一次取码验证后才能继续自动刷新。",
-            next.switchHint,
+        assertEquals(PayCodeFetchGate.AUTO_SMS_HINT, next.switchHint)
+        assertFalse(
+            PayCodeFetchGate.decide(
+                moduleEnabled = true,
+                userSwitchOn = next.userSwitchOn,
+                awaitingSms = false,
+                isRefreshing = false,
+                autoRefreshOn = next.autoRefreshOn,
+            ).mayAutoRefresh,
         )
+    }
+
+    @Test
+    fun userInitiatedNeedSms_keepsAutoRefreshChoice() {
+        val next = PayCodeFetchGate.afterNeedSms(
+            userInitiated = true,
+            currentSwitchOn = true,
+            currentAutoRefresh = false,
+        )
+        assertFalse(next.autoRefreshOn)
+        assertTrue(PayCodeFetchGate.afterSuccess(currentAutoRefresh = true).autoRefreshOn)
     }
 
     @Test

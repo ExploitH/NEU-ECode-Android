@@ -16,7 +16,8 @@ object PayCodeRefreshPolicy {
     fun shouldContinueAutoFetch(
         awaitingSms: Boolean,
         fetchEnabled: Boolean = true,
-    ): Boolean = fetchEnabled && !awaitingSms
+        autoRefresh: Boolean = true,
+    ): Boolean = fetchEnabled && autoRefresh && !awaitingSms
 
     fun shouldRetryAfterSms(awaitingSms: Boolean): Boolean = !awaitingSms
 
@@ -25,8 +26,9 @@ object PayCodeRefreshPolicy {
         ttlSeconds: Int?,
         awaitingSms: Boolean,
         fetchEnabled: Boolean = true,
+        autoRefresh: Boolean = true,
     ): Long? {
-        if (!fetchEnabled || awaitingSms || !success) return null
+        if (!fetchEnabled || !autoRefresh || awaitingSms || !success) return null
         val ttlMs = (ttlSeconds ?: 0).coerceAtLeast(0) * 1_000L
         if (ttlMs <= 0L) return null
         return (ttlMs - AUTO_FETCH_LEAD_MS).coerceAtLeast(AUTO_FETCH_MIN_DELAY_MS)

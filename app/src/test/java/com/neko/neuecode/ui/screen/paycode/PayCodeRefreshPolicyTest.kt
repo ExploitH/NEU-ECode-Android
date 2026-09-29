@@ -99,4 +99,19 @@ class PayCodeRefreshPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun autoRefreshOff_neverSchedulesNextFetch() {
+        assertEquals(
+            null,
+            PayCodeRefreshPolicy.nextAutoFetchDelayMs(
+                success = true,
+                ttlSeconds = 60,
+                awaitingSms = false,
+                fetchEnabled = true,
+                autoRefresh = false,
+            ),
+        )
+        assertFalse(PayCodeRefreshPolicy.shouldContinueAutoFetch(awaitingSms = false, autoRefresh = false))
+    }
 }

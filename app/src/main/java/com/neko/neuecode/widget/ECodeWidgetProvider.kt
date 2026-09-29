@@ -133,7 +133,7 @@ class ECodeWidgetProvider : AppWidgetProvider() {
                     if (!entryPoint.userPreferences().isPayCodeFetchEnabled() ||
                         entryPoint.userPreferences().isPayCodeSmsLocked()
                     ) {
-                        ECodeWidgetStore.saveStatus(appContext, "取码开关已关闭，打开 App 后再取码")
+                        ECodeWidgetStore.saveStatus(appContext, "e码通已关闭，打开 App 后再取码")
                         render(appContext, widgetIds, loading = false)
                         pendingResult?.finish()
                         return@launch

@@ -74,6 +74,7 @@ fun NativeLoginScreen(
     // Handle login success
     LaunchedEffect(uiState) {
         if (uiState is LoginUiState.Success) {
+            viewModel.consumeSuccess()
             onLoginSuccess()
         }
     }

@@ -40,6 +40,7 @@ class UserPreferences @Inject constructor(
         val AUTO_LOGIN_ENABLED = booleanPreferencesKey("auto_login_enabled")
         val PAYCODE_FETCH_ENABLED = booleanPreferencesKey("paycode_fetch_enabled")
         val PAYCODE_SMS_LOCK = booleanPreferencesKey("paycode_sms_lock")
+        val PAYCODE_AUTO_REFRESH = booleanPreferencesKey("paycode_auto_refresh")
         val PAYCODE_SWITCH_HINT = stringPreferencesKey("paycode_switch_hint")
         
         val SAVED_USERNAME = stringPreferencesKey("saved_username")
@@ -170,6 +171,17 @@ class UserPreferences @Inject constructor(
     suspend fun setPayCodeFetchEnabled(enabled: Boolean) {
         context.userDataStore.edit { prefs ->
             prefs[Keys.PAYCODE_FETCH_ENABLED] = enabled
+        }
+    }
+
+    /** 「自动刷新二维码」; defaults on, matching the pre-switch behaviour. */
+    suspend fun isPayCodeAutoRefreshEnabled(): Boolean {
+        return context.userDataStore.data.first()[Keys.PAYCODE_AUTO_REFRESH] ?: true
+    }
+
+    suspend fun setPayCodeAutoRefreshEnabled(enabled: Boolean) {
+        context.userDataStore.edit { prefs ->
+            prefs[Keys.PAYCODE_AUTO_REFRESH] = enabled
         }
     }
 
