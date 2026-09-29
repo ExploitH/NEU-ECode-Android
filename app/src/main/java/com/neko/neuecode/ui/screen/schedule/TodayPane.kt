@@ -102,7 +102,7 @@ private fun TodayCourseRow(item: ScheduleTodayItem, onClick: () -> Unit) {
                 .width(4.dp)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(2.dp))
-                .background(tone.content.copy(alpha = 0.55f)),
+                .background(tone.content.copy(alpha = 0.7f)),
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(

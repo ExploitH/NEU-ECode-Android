@@ -18,12 +18,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,8 +56,8 @@ fun BrandMark(
         Image(
             painter = painterResource(R.drawable.ic_launcher_foreground),
             contentDescription = null,
-            // Same crop as the adaptive launcher icon: 72dp visible of a 108dp canvas.
-            modifier = Modifier.requiredSize(size * (108f / 72f)),
+            // 108dp adaptive canvas scaled so the mark keeps a margin inside the tile.
+            modifier = Modifier.requiredSize(size * 1.18f),
         )
     }
 }
@@ -170,7 +170,9 @@ fun InfoBanner(
         )
         if (actionLabel != null && onAction != null) {
             Spacer(modifier = Modifier.width(8.dp))
-            FilledTonalButton(onClick = onAction) { Text(actionLabel) }
+            TextButton(onClick = onAction) {
+                Text(actionLabel, color = colors.primary, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
