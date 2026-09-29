@@ -55,17 +55,8 @@ fun AppUpdateDialog(
         text = {
             Column {
                 Text(
-                    text = buildString {
-                        append("当前版本：")
-                        append(BuildConfig.VERSION_NAME)
-                        append(" (code ")
-                        append(BuildConfig.VERSION_CODE)
-                        append(")\n最新版本：")
-                        append(updateInfo.latestVersionName.ifBlank { updateInfo.latestVersionCode.toString() })
-                        append(" (code ")
-                        append(updateInfo.latestVersionCode)
-                        append(')')
-                    },
+                    text = "${BuildConfig.VERSION_NAME} → " +
+                        updateInfo.latestVersionName.ifBlank { updateInfo.latestVersionCode.toString() },
                     style = MaterialTheme.typography.bodyMedium
                 )
                 if (forceUpdate) {

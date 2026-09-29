@@ -1,14 +1,27 @@
 package com.neko.neuecode.ui.screen.personal
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Grade
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.VpnLock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.neko.neuecode.BuildConfig
@@ -17,6 +30,10 @@ import com.neko.neuecode.data.local.datastore.UserPreferences
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
 import com.neko.neuecode.ui.common.LegalText
+import com.neko.neuecode.ui.components.Panel
+import com.neko.neuecode.ui.components.PanelDivider
+import com.neko.neuecode.ui.components.PanelRow
+import com.neko.neuecode.ui.components.SectionLabel
 import com.neko.neuecode.util.CacheCleaner
 import kotlinx.coroutines.launch
 
@@ -44,162 +61,140 @@ fun PersonalScreen(
         cookieJar.restoreFromStorage()
     }
     
+    val user = sessionState.user
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                val initial = user.name.trim().take(1)
+                if (initial.isNotEmpty()) {
+                    Text(
+                        text = initial,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                } else {
+                    Icon(
+                        Icons.Outlined.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = sessionState.user.name,
-                    style = MaterialTheme.typography.headlineSmall
+                    text = user.name,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
                 )
                 Text(
-                    text = sessionState.user.studentId ?: sessionState.user.username,
+                    text = listOfNotNull(user.studentId ?: user.username, user.department).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
-                if (sessionState.user.department != null) {
-                    Text(
-                        text = sessionState.user.department,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
-                    )
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "登录状态",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                StatusItem(
-                    icon = Icons.Default.AccessTime,
-                    label = "上次刷新",
-                    value = formatTimestamp(sessionState.lastRefresh)
-                )
-                
-                StatusItem(
-                    icon = Icons.Default.Schedule,
-                    label = "过期时间",
-                    value = formatTimestamp(sessionState.expiresAt)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "功能",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
 
-                SettingItem(
-                    icon = Icons.Default.VpnLock,
-                    label = "内网连接",
-                    onClick = onOpenIntranet
-                )
-
-                SettingItem(
-                    icon = Icons.Default.Event,
-                    label = "考试",
-                    onClick = onOpenExams
-                )
-
-                SettingItem(
-                    icon = Icons.Default.Grade,
-                    label = "成绩",
-                    onClick = onOpenScores
-                )
-
-                SettingItem(
-                    icon = Icons.Default.Info,
-                    label = "关于 / 用户协议",
-                    onClick = { showAboutDialog = true }
-                )
-                
-                SettingItem(
-                    icon = Icons.Default.Storage,
-                    label = if (isClearingCache) "正在清理缓存..." else "清理缓存",
-                    onClick = {
-                        if (!isClearingCache) {
-                            showClearCacheDialog = true
-                        }
-                    }
-                )
-
-                cacheCleanMessage?.let { message ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+        SectionLabel("教务")
+        Panel {
+            PanelRow(icon = Icons.Outlined.Event, title = "考试", onClick = onOpenExams, trailing = { Chevron() })
+            PanelDivider()
+            PanelRow(icon = Icons.Outlined.Grade, title = "成绩", onClick = onOpenScores, trailing = { Chevron() })
+            PanelDivider()
+            PanelRow(icon = Icons.Outlined.VpnLock, title = "内网连接", onClick = onOpenIntranet, trailing = { Chevron() })
         }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Button(
-            onClick = { showLogoutDialog = true },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error
+
+        Spacer(modifier = Modifier.height(20.dp))
+        SectionLabel("登录状态")
+        Panel {
+            PanelRow(
+                icon = Icons.Outlined.History,
+                title = "上次刷新",
+                value = formatPast(sessionState.lastRefresh)
             )
-        ) {
-            Icon(Icons.Default.Logout, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("退出登录")
+            PanelDivider()
+            PanelRow(
+                icon = Icons.Outlined.Schedule,
+                title = "登录有效期",
+                value = formatExpiry(sessionState.expiresAt)
+            )
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
+
+        Spacer(modifier = Modifier.height(20.dp))
+        SectionLabel("其他")
+        Panel {
+            PanelRow(
+                icon = Icons.Outlined.Info,
+                title = "关于 / 用户协议",
+                onClick = { showAboutDialog = true },
+                trailing = { Chevron() }
+            )
+            PanelDivider()
+            PanelRow(
+                icon = Icons.Outlined.CleaningServices,
+                title = if (isClearingCache) "正在清理缓存…" else "清理缓存",
+                onClick = {
+                    if (!isClearingCache) {
+                        showClearCacheDialog = true
+                    }
+                },
+                trailing = { Chevron() }
+            )
+            cacheCleanMessage?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = 14.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+        Panel {
+            PanelRow(
+                icon = Icons.AutoMirrored.Outlined.Logout,
+                title = "退出登录",
+                titleColor = MaterialTheme.colorScheme.error,
+                iconTint = MaterialTheme.colorScheme.error,
+                onClick = { showLogoutDialog = true }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Text(
             text = "NEU e码通 ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
-        
+
         Text(
             text = "Powered by Neko 🐱",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
+        Spacer(modifier = Modifier.height(16.dp))
     }
-    
+
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -212,7 +207,7 @@ fun PersonalScreen(
                         onLogout()
                     }
                 ) {
-                    Text("退出")
+                    Text("退出", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -345,82 +340,32 @@ private fun AgreementReadOnlyDialog(
 }
 
 @Composable
-fun StatusItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+private fun Chevron() {
+    Icon(
+        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.outline
+    )
 }
 
-@Composable
-fun SettingItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-private fun formatTimestamp(timestamp: Long): String {
-    val diff = System.currentTimeMillis() - timestamp
-    val minutes = diff / 60000
+private fun formatPast(timestamp: Long): String {
+    val minutes = (System.currentTimeMillis() - timestamp).coerceAtLeast(0L) / 60_000
     return when {
         minutes < 1 -> "刚刚"
-        minutes < 60 -> "${minutes}分钟前"
-        minutes < 1440 -> "${minutes / 60}小时前"
-        else -> "${minutes / 1440}天前"
+        minutes < 60 -> "${minutes} 分钟前"
+        minutes < 1440 -> "${minutes / 60} 小时前"
+        else -> "${minutes / 1440} 天前"
+    }
+}
+
+/** [expiresAt] lies in the future; the old formatter only handled the past and showed 「刚刚」. */
+private fun formatExpiry(expiresAt: Long): String {
+    val minutes = (expiresAt - System.currentTimeMillis()) / 60_000
+    return when {
+        minutes <= 0 -> "已过期"
+        minutes < 60 -> "${minutes} 分钟后过期"
+        minutes < 1440 -> "${minutes / 60} 小时后过期"
+        else -> "${minutes / 1440} 天后过期"
     }
 }
 

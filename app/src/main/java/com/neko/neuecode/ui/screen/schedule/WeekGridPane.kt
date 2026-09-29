@@ -32,26 +32,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.neko.neuecode.data.local.schedule.WeekStartDay
-import com.neko.neuecode.domain.jwxt.CourseColorHasher
 import com.neko.neuecode.domain.jwxt.JwxtScheduleDocument
 import com.neko.neuecode.domain.jwxt.JwxtSection
 import com.neko.neuecode.domain.jwxt.ScheduleGridCell
 import com.neko.neuecode.domain.jwxt.SchedulePresentation
 import com.neko.neuecode.domain.jwxt.ScheduleWeekLayout
+import com.neko.neuecode.ui.theme.CoursePalette
+import com.neko.neuecode.ui.theme.panel
 
 private const val WEEKDAY_COUNT = 7
 private const val SECTION_COUNT = 12
-private val headerRowHeight = 56.dp
-private val timeColumnWidth = 44.dp
+private val headerRowHeight = 44.dp
+private val timeColumnWidth = 28.dp
 private val slotHeight = 56.dp
-private val gap = 4.dp
+private val gap = 2.dp
 
 @Composable
 fun WeekGridPane(
@@ -91,29 +90,43 @@ fun WeekGridPane(
     termStartEpochDay: Long? = null,
     week: Int = 1,
 ) {
-    val sectionTimes = sections.associate { it.number to it.name }
     val maxSection = sections.maxOfOrNull { it.number }?.coerceAtLeast(SECTION_COUNT) ?: SECTION_COUNT
     val colors = MaterialTheme.colorScheme
     val rowH = slotHeight + gap
-    val counts = cells.groupingBy { it.weekday }.eachCount()
     val headers = ScheduleWeekLayout.headers(
         weekStartDay = weekStartDay,
         termStartEpochDay = termStartEpochDay,
         week = week,
-        courseCounts = counts,
+        courseCounts = emptyMap(),
     )
+    val todayColumn = headers.indexOfFirst { it.weekday == todayWeekday }
+    val lineColor = colors.outlineVariant.copy(alpha = 0.45f)
+    val todayTint = colors.primary.copy(alpha = 0.07f)
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(20.dp))
-            .background(colors.surfaceContainerHigh)
-            .padding(8.dp),
+            .background(colors.panel)
+            .padding(horizontal = 4.dp, vertical = 4.dp),
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val dayColumnWidth = ((maxWidth - timeColumnWidth - gap * WEEKDAY_COUNT) / WEEKDAY_COUNT)
                 .coerceAtLeast(36.dp)
             val gridH = rowH * maxSection
+            val columnX = { index: Int -> timeColumnWidth + gap + (dayColumnWidth + gap) * index }
+
+            // Today's column is tinted from header to last period.
+            if (todayColumn >= 0) {
+                Box(
+                    modifier = Modifier
+                        .offset(x = columnX(todayColumn) - gap / 2)
+                        .width(dayColumnWidth + gap)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(todayTint),
+                )
+            }
 
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
@@ -126,42 +139,29 @@ fun WeekGridPane(
                     Spacer(modifier = Modifier.width(timeColumnWidth))
                     headers.forEach { header ->
                         val highlight = header.weekday == todayWeekday
-                        val count = header.courseCount
                         Column(
-                            modifier = Modifier
-                                .width(dayColumnWidth)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(if (highlight) colors.primaryContainer else colors.surface)
-                                .padding(vertical = 2.dp),
+                            modifier = Modifier.width(dayColumnWidth),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
                         ) {
                             Text(
                                 text = "周${header.label}",
-                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                color = if (highlight) colors.onPrimaryContainer else colors.onSurface,
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = if (highlight) FontWeight.Bold else FontWeight.Medium,
+                                ),
+                                color = if (highlight) colors.primary else colors.onSurface,
                                 maxLines = 1,
                             )
                             header.dateLabel?.let { date ->
                                 Text(
                                     text = date,
                                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                    color = if (highlight) colors.onPrimaryContainer.copy(alpha = 0.85f) else colors.onSurfaceVariant,
+                                    color = if (highlight) colors.primary else colors.onSurfaceVariant,
                                     maxLines = 1,
                                 )
                             }
-                            Text(
-                                text = if (count == 0) "无课" else "${count}门",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (highlight) colors.onPrimaryContainer.copy(alpha = 0.8f) else colors.onSurfaceVariant,
-                                maxLines = 1,
-                            )
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(gap))
 
                 Box(
                     modifier = Modifier
@@ -175,35 +175,28 @@ fun WeekGridPane(
                             .height(gridH),
                     ) {
                     for (section in 1..maxSection) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(slotHeight)
-                                .offset(y = rowH * (section - 1)),
-                            horizontalArrangement = Arrangement.spacedBy(gap),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
+                        if (section > 1) {
+                            Box(
                                 modifier = Modifier
-                                    .width(timeColumnWidth)
-                                    .fillMaxHeight()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(colors.surfaceContainerLow)
-                                    .padding(horizontal = 2.dp, vertical = 4.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                Text(
-                                    text = sectionTimes[section] ?: "${section}节",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = colors.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Clip,
-                                )
-                            }
-                            repeat(WEEKDAY_COUNT) {
-                                Spacer(modifier = Modifier.width(dayColumnWidth).fillMaxHeight())
-                            }
+                                    .offset(x = timeColumnWidth, y = rowH * (section - 1) - gap / 2)
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(lineColor),
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .offset(y = rowH * (section - 1))
+                                .width(timeColumnWidth)
+                                .height(slotHeight),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = section.toString(),
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = colors.onSurfaceVariant,
+                                maxLines = 1,
+                            )
                         }
                     }
 
@@ -212,45 +205,43 @@ fun WeekGridPane(
                         val start = cell.startSection.coerceIn(1, maxSection)
                         val end = cell.endSection.coerceIn(start, maxSection)
                         val span = (end - start + 1).coerceAtLeast(1)
-                        val cardX = timeColumnWidth + gap + (dayColumnWidth + gap) *
-                            ScheduleWeekLayout.columnIndex(cell.weekday, weekStartDay)
+                        val cardX = columnX(ScheduleWeekLayout.columnIndex(cell.weekday, weekStartDay))
                         val cardY = rowH * (start - 1)
                         val cardH = rowH * span - gap
-                        val hue = CourseColorHasher.hue(cell.courseKey)
-                        Box(
+                        val tone = CoursePalette.tone(cell.courseKey)
+                        Column(
                             modifier = Modifier
                                 .offset(x = cardX, y = cardY)
                                 .width(dayColumnWidth)
                                 .height(cardH)
-                                .padding(1.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(Color.hsl(hue, 0.42f, 0.78f))
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(tone.container)
                                 .clickable { onCellClick(cell) }
-                                .padding(4.dp),
+                                .padding(horizontal = 4.dp, vertical = 5.dp),
                         ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.SpaceBetween,
-                            ) {
+                            Text(
+                                text = cell.courseName,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp,
+                                ),
+                                color = tone.content,
+                                maxLines = if (span >= 2) 4 else 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (cell.classroom.isNotBlank()) {
+                                Spacer(modifier = Modifier.weight(1f))
                                 Text(
-                                    text = cell.courseName,
+                                    text = cell.classroom,
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.SemiBold,
                                         fontSize = 10.sp,
-                                        lineHeight = 13.sp,
+                                        lineHeight = 12.sp,
                                     ),
-                                    maxLines = 3,
+                                    color = tone.content.copy(alpha = 0.78f),
+                                    maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                if (cell.classroom.isNotBlank()) {
-                                    Text(
-                                        text = cell.classroom,
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Start,
-                                    )
-                                }
                             }
                         }
                     }

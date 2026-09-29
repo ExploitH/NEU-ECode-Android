@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +40,7 @@ import com.neko.neuecode.data.remote.update.AppVersionInfo
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
 import com.neko.neuecode.ui.components.BrandLoadingMark
+import com.neko.neuecode.ui.components.EmptyState
 import com.neko.neuecode.ui.screen.login.NativeLoginScreen
 import com.neko.neuecode.ui.theme.NeuECodeTheme
 import com.neko.neuecode.ui.navigation.MainDestinations
@@ -345,7 +348,7 @@ fun LoadingScreen() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        BrandLoadingMark(caption = "加载中...")
+        BrandLoadingMark(caption = "加载中…")
     }
 }
 
@@ -354,24 +357,16 @@ fun ErrorScreen(
     message: String,
     onRetry: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "😿 出错了",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(message)
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onRetry) {
-            Text("重试")
-        }
-    }
+    EmptyState(
+        icon = Icons.Outlined.ErrorOutline,
+        title = "出错了",
+        message = message,
+        action = {
+            Button(onClick = onRetry) {
+                Text("重试")
+            }
+        },
+    )
 }
 
 fun formatTimestamp(timestamp: Long): String {

@@ -14,6 +14,14 @@ object CourseColorHasher {
         }
         return ((hash ushr 1) % 360).toFloat()
     }
+
+    /** Number of curated course tones shared by the app grid and the widgets. */
+    const val PALETTE_SIZE = 10
+
+    /** Stable slot in the curated course palette, in [0, PALETTE_SIZE). */
+    fun paletteIndex(courseKey: String): Int {
+        return (hue(courseKey) / (360f / PALETTE_SIZE)).toInt().coerceIn(0, PALETTE_SIZE - 1)
+    }
 }
 
 object ScheduleWeekClock {

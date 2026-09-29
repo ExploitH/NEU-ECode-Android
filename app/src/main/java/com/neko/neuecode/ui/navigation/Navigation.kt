@@ -7,10 +7,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -37,17 +41,24 @@ import com.neko.neuecode.ui.screen.paycode.PayCodeScreen
 import com.neko.neuecode.ui.screen.personal.PersonalScreen
 import com.neko.neuecode.ui.screen.recharge.RechargeScreen
 import com.neko.neuecode.ui.screen.schedule.JwxtScheduleScreen
+import com.neko.neuecode.ui.theme.panel
 
 private data class BottomBarDestination(
     val route: String,
     val label: String,
     val icon: ImageVector,
+    val selectedIcon: ImageVector,
 )
 
 private val bottomBarDestinations = listOf(
-    BottomBarDestination(MainDestinations.PAY, MainDestinations.LABEL_PAY, Icons.Default.QrCode),
-    BottomBarDestination(MainDestinations.SCHEDULE, MainDestinations.LABEL_SCHEDULE, Icons.Default.DateRange),
-    BottomBarDestination(MainDestinations.ME, MainDestinations.LABEL_ME, Icons.Default.Person),
+    BottomBarDestination(MainDestinations.PAY, MainDestinations.LABEL_PAY, Icons.Outlined.QrCode2, Icons.Filled.QrCode2),
+    BottomBarDestination(
+        MainDestinations.SCHEDULE,
+        MainDestinations.LABEL_SCHEDULE,
+        Icons.Outlined.CalendarMonth,
+        Icons.Filled.CalendarMonth,
+    ),
+    BottomBarDestination(MainDestinations.ME, MainDestinations.LABEL_ME, Icons.Outlined.Person, Icons.Filled.Person),
 )
 
 @Composable
@@ -77,12 +88,18 @@ fun MainAppScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.panel) {
                     bottomBarDestinations.forEach { destination ->
+                        val selected = currentRoute == destination.route
                         NavigationBarItem(
-                            icon = { Icon(destination.icon, contentDescription = destination.label) },
+                            icon = {
+                                Icon(
+                                    if (selected) destination.selectedIcon else destination.icon,
+                                    contentDescription = destination.label,
+                                )
+                            },
                             label = { Text(destination.label) },
-                            selected = currentRoute == destination.route,
+                            selected = selected,
                             onClick = {
                                 navController.navigate(destination.route) {
                                     popUpTo(navController.graph.startDestinationId) {

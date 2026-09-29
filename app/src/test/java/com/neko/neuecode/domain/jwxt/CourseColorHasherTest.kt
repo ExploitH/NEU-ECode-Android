@@ -24,6 +24,18 @@ class CourseColorHasherTest {
             CourseColorHasher.hue("B2002:JX009"),
         )
     }
+
+    @Test
+    fun paletteIndex_isStableAndInRange() {
+        val keys = (0 until 200).map { "C$it:JX$it" }
+        keys.forEach { key ->
+            val index = CourseColorHasher.paletteIndex(key)
+            assertTrue(index in 0 until CourseColorHasher.PALETTE_SIZE)
+            assertEquals(index, CourseColorHasher.paletteIndex(key))
+        }
+        // A realistic spread of keys should use most of the palette.
+        assertTrue(keys.map(CourseColorHasher::paletteIndex).toSet().size >= CourseColorHasher.PALETTE_SIZE - 2)
+    }
 }
 
 class ScheduleWeekClockTest {

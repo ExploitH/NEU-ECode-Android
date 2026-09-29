@@ -1,6 +1,12 @@
 package com.neko.neuecode.ui.screen.academic
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +22,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Grade
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.VpnLock
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -48,6 +59,9 @@ import com.neko.neuecode.domain.jwxt.JwxtScore
 import com.neko.neuecode.domain.jwxt.ScheduleLoginInitHint
 import com.neko.neuecode.domain.jwxt.displayName
 import com.neko.neuecode.ui.components.BrandLoadingMark
+import com.neko.neuecode.ui.components.EmptyState
+import com.neko.neuecode.ui.components.InfoBanner
+import com.neko.neuecode.ui.theme.panel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,11 +98,15 @@ fun JwxtAcademicScreen(
                             ?: state.kind.title,
                         onSelect = { viewModel.selectTerm(it) },
                     )
-                    TextButton(
+                    IconButton(
                         onClick = { viewModel.refresh() },
                         enabled = !state.loading,
                     ) {
-                        Text(if (state.loading) "同步中" else "同步")
+                        if (state.loading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Outlined.Sync, contentDescription = "同步")
+                        }
                     }
                 },
             )
@@ -101,10 +119,13 @@ fun JwxtAcademicScreen(
                 .padding(horizontal = 8.dp, vertical = 4.dp),
         ) {
             if (state.showIntranetHint) {
-                Button(onClick = onOpenIntranet, modifier = Modifier.fillMaxWidth()) {
-                    Text("去内网连接")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
+                InfoBanner(
+                    icon = Icons.Outlined.VpnLock,
+                    message = "教务接口需要校园内网",
+                    actionLabel = "去连接",
+                    onAction = onOpenIntranet,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
             }
             when {
                 state.loading -> {
@@ -116,30 +137,31 @@ fun JwxtAcademicScreen(
                     }
                 }
                 !hasDocument -> {
-                    Text(
-                        text = state.message.ifBlank { "尚未同步${state.kind.title}" },
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp),
+                    EmptyState(
+                        icon = if (state.kind == AcademicKind.Scores) Icons.Outlined.Grade else Icons.Outlined.Event,
+                        title = "尚未同步${state.kind.title}",
+                        message = state.message.takeIf { it.isNotBlank() },
+                        action = {
+                            Button(onClick = { viewModel.refresh() }) { Text("立即同步") }
+                        },
                     )
                 }
                 state.kind == AcademicKind.Scores -> {
                     val document = state.scores!!
                     if (document.scores.isEmpty()) {
-                        Text(
-                            text = "本学期暂无可查询成绩",
-                            color = colors.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp),
-                        )
+                        EmptyState(icon = Icons.Outlined.Grade, title = "本学期暂无可查询成绩")
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp),
                         ) {
                             item {
                                 Text(
                                     text = "${document.term.displayName} · ${document.summary.count} 门",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = colors.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 16.dp, top = 8.dp),
                                 )
                             }
                             items(document.scores, key = { "${it.courseNo}-${it.courseName}" }) { score ->
@@ -153,21 +175,19 @@ fun JwxtAcademicScreen(
                 else -> {
                     val document = state.exams!!
                     if (document.exams.isEmpty()) {
-                        Text(
-                            text = "本学期暂无可查询考试",
-                            color = colors.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp),
-                        )
+                        EmptyState(icon = Icons.Outlined.Event, title = "本学期暂无可查询考试")
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp),
                         ) {
                             item {
                                 Text(
                                     text = "${document.term.displayName} · ${document.summary.count} 场",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = colors.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 16.dp, top = 8.dp),
                                 )
                             }
                             items(
@@ -195,54 +215,99 @@ fun JwxtAcademicScreen(
 
 @Composable
 private fun ScoreCard(score: JwxtScore, onClick: () -> Unit) {
-    Card(
+    val colors = MaterialTheme.colorScheme
+    val failed = isFailing(score)
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
-            .clickable(onClick = onClick),
+            .clip(RoundedCornerShape(18.dp))
+            .background(colors.panel)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(score.courseName, style = MaterialTheme.typography.titleMedium)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                score.courseName,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 listOfNotNull(
-                    score.courseNo.takeIf { it.isNotBlank() },
                     score.courseType.takeIf { it.isNotBlank() },
                     score.credit?.let { "$it 学分" },
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.onSurfaceVariant,
             )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(horizontalAlignment = Alignment.End) {
             Text(
-                listOf(score.score, score.passStatus).filter { it.isNotBlank() }.joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium,
+                text = score.score.ifBlank { "—" },
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = if (failed) colors.error else colors.primary,
             )
+            if (score.passStatus.isNotBlank()) {
+                Text(
+                    text = score.passStatus,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (failed) colors.error else colors.onSurfaceVariant,
+                )
+            }
         }
     }
 }
 
+private fun isFailing(score: JwxtScore): Boolean {
+    val numeric = score.score.trim().toDoubleOrNull()
+    if (numeric != null) return numeric < 60.0
+    return score.passStatus.contains("不") || score.score.contains("不及格")
+}
+
 @Composable
 private fun ExamCard(exam: JwxtExam, onClick: () -> Unit) {
-    Card(
+    val colors = MaterialTheme.colorScheme
+    val time = exam.timeDescription.ifBlank {
+        listOf(exam.startTime, exam.endTime).filter { it.isNotBlank() }.joinToString("-")
+    }
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
-            .clickable(onClick = onClick),
+            .clip(RoundedCornerShape(18.dp))
+            .background(colors.panel)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(exam.courseName, style = MaterialTheme.typography.titleMedium)
+        val whenLabel = listOf(exam.date, time).filter { it.isNotBlank() }.joinToString("  ")
+        if (whenLabel.isNotBlank()) {
             Text(
-                listOf(exam.date, exam.timeDescription.ifBlank { listOf(exam.startTime, exam.endTime).filter { it.isNotBlank() }.joinToString("-") })
-                    .filter { it.isNotBlank() }
-                    .joinToString("  "),
-                style = MaterialTheme.typography.bodySmall,
+                whenLabel,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.primary,
             )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+        Text(
+            exam.courseName,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val where = listOf(exam.place, exam.seatNo.takeIf { it.isNotBlank() }?.let { "座位 $it" }, exam.examType)
+            .mapNotNull { it }
+            .filter { it.isNotBlank() }
+            .joinToString(" · ")
+        if (where.isNotBlank()) {
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                listOf(exam.place, exam.seatNo.takeIf { it.isNotBlank() }?.let { "座位 $it" }, exam.examType)
-                    .mapNotNull { it }
-                    .filter { it.isNotBlank() }
-                    .joinToString(" · "),
+                where,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.onSurfaceVariant,
             )
         }
     }
@@ -314,16 +379,29 @@ private fun AcademicTermPicker(
     val selected = terms.firstOrNull { it.code == selectedCode }
     val label = selected?.displayName ?: fallbackName
     Box {
-        Text(
-            text = label,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.titleMedium,
+        Row(
             modifier = Modifier
+                .widthIn(max = 160.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .clickable(enabled = terms.isNotEmpty()) { open = true }
-                .padding(horizontal = 4.dp, vertical = 2.dp),
-        )
+                .padding(start = 8.dp, end = 2.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (terms.isNotEmpty()) {
+                Icon(
+                    Icons.Outlined.ArrowDropDown,
+                    contentDescription = "切换学期",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             terms.forEach { term ->
                 Text(

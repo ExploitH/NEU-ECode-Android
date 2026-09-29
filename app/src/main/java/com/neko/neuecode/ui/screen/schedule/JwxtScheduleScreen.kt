@@ -41,14 +41,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.EventBusy
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.VpnLock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -78,6 +86,8 @@ import com.neko.neuecode.data.local.schedule.WeekStartDay
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
 import com.neko.neuecode.domain.jwxt.ScheduleLoginInitHint
 import com.neko.neuecode.ui.components.BrandLoadingMark
+import com.neko.neuecode.ui.components.EmptyState
+import com.neko.neuecode.ui.components.InfoBanner
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -112,23 +122,27 @@ fun JwxtScheduleScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    TextButton(onClick = { viewModel.openSettings() }) {
-                        Text("课表设定")
-                    }
-                },
-                windowInsets = WindowInsets.statusBars,
-                actions = {
                     TermPicker(
                         terms = state.terms,
                         selectedCode = state.selectedTermCode ?: document?.term?.code,
                         fallbackName = document?.term?.name ?: "课表",
                         onSelect = { viewModel.selectTerm(it) },
                     )
-                    TextButton(
+                },
+                windowInsets = WindowInsets.statusBars,
+                actions = {
+                    IconButton(
                         onClick = { viewModel.refresh() },
                         enabled = !state.loading,
                     ) {
-                        Text(if (state.loading) "同步中" else "同步")
+                        if (state.loading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Outlined.Sync, contentDescription = "同步")
+                        }
+                    }
+                    IconButton(onClick = { viewModel.openSettings() }) {
+                        Icon(Icons.Outlined.Tune, contentDescription = "课表设定")
                     }
                 },
             )
@@ -138,15 +152,18 @@ fun JwxtScheduleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 8.dp),
         ) {
             if (state.showIntranetHint) {
-                Button(onClick = onOpenIntranet, modifier = Modifier.fillMaxWidth()) {
-                    Text("去内网连接")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
+                InfoBanner(
+                    icon = Icons.Outlined.VpnLock,
+                    message = "教务接口需要校园内网",
+                    actionLabel = "去连接",
+                    onAction = onOpenIntranet,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
             }
-            if (state.loading) {
+            if (state.loading && document != null) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -169,31 +186,46 @@ fun JwxtScheduleScreen(
                     }
                 }
             }
-            WeekChrome(
-                selectedWeek = state.selectedWeek,
-                maxWeek = maxWeek,
-                onPrev = { goWeek(-1) },
-                onNext = { goWeek(1) },
-                onSelectWeek = { week ->
-                    viewModel.selectWeek(week)
-                    scope.launch { pagerState.animateScrollToPage(WeekPagerIndex.pageOf(week, maxWeek)) }
-                },
-            )
-            SingleChoiceSegmentedButtonRow(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                SegmentedButton(
-                    selected = state.pane == SchedulePane.Week,
-                    onClick = { viewModel.selectPane(SchedulePane.Week) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                ) { Text("网格") }
-                SegmentedButton(
-                    selected = state.pane == SchedulePane.Today,
-                    onClick = { viewModel.selectPane(SchedulePane.Today) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                ) { Text("今日") }
+                Box(modifier = Modifier.weight(1f)) {
+                    if (state.pane == SchedulePane.Week) {
+                        WeekChrome(
+                            selectedWeek = state.selectedWeek,
+                            maxWeek = maxWeek,
+                            onPrev = { goWeek(-1) },
+                            onNext = { goWeek(1) },
+                            onSelectWeek = { week ->
+                                viewModel.selectWeek(week)
+                                scope.launch { pagerState.animateScrollToPage(WeekPagerIndex.pageOf(week, maxWeek)) }
+                            },
+                        )
+                    } else {
+                        Text(
+                            text = todayTitle(state.actualWeek, state.todayWeekday),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                    }
+                }
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.width(132.dp)) {
+                    SegmentedButton(
+                        selected = state.pane == SchedulePane.Week,
+                        onClick = { viewModel.selectPane(SchedulePane.Week) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        icon = {},
+                    ) { Text("周") }
+                    SegmentedButton(
+                        selected = state.pane == SchedulePane.Today,
+                        onClick = { viewModel.selectPane(SchedulePane.Today) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        icon = {},
+                    ) { Text("今日") }
+                }
             }
             if (state.loading && document == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -203,10 +235,13 @@ fun JwxtScheduleScreen(
                     )
                 }
             } else if (document == null) {
-                Text(
-                    text = state.message.ifBlank { "尚未同步课表" },
-                    color = colors.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
+                EmptyState(
+                    icon = Icons.Outlined.CalendarMonth,
+                    title = "尚未同步课表",
+                    message = state.message.takeIf { it.isNotBlank() && it != "尚未同步课表" },
+                    action = {
+                        Button(onClick = { viewModel.refresh() }) { Text("立即同步") }
+                    },
                 )
             } else {
                 AnimatedContent(
@@ -242,10 +277,12 @@ fun JwxtScheduleScreen(
                                 actualWeek = state.actualWeek,
                             )
                             if (todayWeek == null || unavailable != null) {
-                                Text(
-                                    text = unavailable ?: com.neko.neuecode.domain.jwxt.ScheduleTodayCopy.MISSING_TERM_START,
-                                    color = colors.onSurfaceVariant,
-                                    modifier = Modifier.padding(16.dp),
+                                EmptyState(
+                                    icon = Icons.Outlined.EventBusy,
+                                    title = unavailable ?: com.neko.neuecode.domain.jwxt.ScheduleTodayCopy.MISSING_TERM_START,
+                                    action = {
+                                        TextButton(onClick = { viewModel.openSettings() }) { Text("打开课表设定") }
+                                    },
                                 )
                             } else {
                                 TodayPane(
@@ -291,16 +328,28 @@ private fun TermPicker(
     val selected = terms.firstOrNull { it.code == selectedCode }
     val label = selected?.name ?: fallbackName
     Box {
-        Text(
-            text = label,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.titleMedium,
+        Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
                 .clickable(enabled = terms.isNotEmpty()) { open = true }
-                .padding(horizontal = 4.dp, vertical = 2.dp),
-        )
+                .padding(start = 4.dp, end = 2.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (terms.isNotEmpty()) {
+                Icon(
+                    Icons.Outlined.ArrowDropDown,
+                    contentDescription = "切换学期",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             terms.forEach { term ->
                 Text(
@@ -332,10 +381,7 @@ private fun WeekChrome(
     val colors = MaterialTheme.colorScheme
     var menuOpen by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RoundNav(enabled = true, onClick = onPrev) {
@@ -350,7 +396,7 @@ private fun WeekChrome(
                     .clip(RoundedCornerShape(20.dp))
                     .background(colors.primaryContainer)
                     .clickable { menuOpen = true }
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
             )
             DropdownMenu(
                 expanded = menuOpen,
@@ -408,7 +454,7 @@ private fun RoundNav(
     val colors = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
-            .size(32.dp)
+            .size(36.dp)
             .clip(CircleShape)
             .background(colors.surfaceContainerHigh)
             .clickable(enabled = enabled, onClick = onClick),
@@ -565,4 +611,10 @@ private fun formatEpochDay(epochDay: Long): String {
     val m = calendar.get(java.util.Calendar.MONTH) + 1
     val d = calendar.get(java.util.Calendar.DAY_OF_MONTH)
     return "%04d-%02d-%02d".format(y, m, d)
+}
+
+private fun todayTitle(actualWeek: Int?, weekday: Int): String {
+    val names = listOf("一", "二", "三", "四", "五", "六", "日")
+    val day = names.getOrNull(weekday - 1)?.let { "周$it" } ?: "今天"
+    return if (actualWeek != null) "第 $actualWeek 周 · $day" else "今天 · $day"
 }

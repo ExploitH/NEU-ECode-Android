@@ -1,5 +1,6 @@
 package com.neko.neuecode.ui.screen.login
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -26,8 +28,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -35,6 +39,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.neko.neuecode.ui.common.LegalText
+import com.neko.neuecode.ui.components.BrandMark
 
 /**
  * Native login screen with RSA encryption
@@ -73,61 +78,38 @@ fun NativeLoginScreen(
         }
     }
     
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "东大码登录",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                },
-                windowInsets = WindowInsets.statusBars,
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            )
-        }
-    ) { paddingValues ->
+    Scaffold { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .imePadding()
-                .navigationBarsPadding()
                 .padding(paddingValues)
-                .padding(24.dp),
+                .imePadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // App Icon
-            Icon(
-                imageVector = Icons.Default.QrCode,
-                contentDescription = "东大码",
-                modifier = Modifier.size(80.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Title
+            Spacer(modifier = Modifier.height(40.dp))
+
+            BrandMark(size = 76.dp)
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             Text(
-                text = "东北大学 统一身份认证",
-                style = MaterialTheme.typography.headlineSmall,
+                text = "东大码",
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Subtitle
+
+            Spacer(modifier = Modifier.height(6.dp))
+
             Text(
-                text = "使用智慧东大原生 RSA 登录协议",
-                style = MaterialTheme.typography.bodySmall,
+                text = "使用东北大学统一身份认证账号登录",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
+
+            Spacer(modifier = Modifier.height(36.dp))
+
             // Username field
             OutlinedTextField(
                 value = username,
@@ -146,6 +128,7 @@ fun NativeLoginScreen(
                 keyboardActions = KeyboardActions(
                     onNext = { focusManager.moveFocus(FocusDirection.Down) }
                 ),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             )
             
@@ -183,6 +166,7 @@ fun NativeLoginScreen(
                         }
                     }
                 ),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             )
             
@@ -246,21 +230,21 @@ fun NativeLoginScreen(
                         viewModel.login(username, password, rememberUsername, longTermLogin)
                     },
                     enabled = username.isNotBlank() && password.isNotBlank() && agreementAccepted && uiState !is LoginUiState.Loading,
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(52.dp)
                 ) {
                     if (uiState is LoginUiState.Loading) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("处理中...")
+                        Text("登录中…")
                     } else {
-                        Icon(Icons.Default.Login, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("登录 / 获取验证码", style = MaterialTheme.typography.titleMedium)
+                        Text("登录", style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
@@ -275,7 +259,7 @@ fun NativeLoginScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "第二步：提交短信验证码",
+                            text = "短信验证",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -287,7 +271,7 @@ fun NativeLoginScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "验证码已发送后，请直接在这里输入并点击下方“提交验证码”。如需重发，请使用“重新发送验证码”，不要再次点击第一步按钮。",
+                            text = "收到短信后在此输入验证码；没收到可点「重新发送」。",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
                         )
@@ -334,7 +318,7 @@ fun NativeLoginScreen(
                                 enabled = uiState !is LoginUiState.Loading,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("重新发送验证码")
+                                Text("重新发送")
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -349,12 +333,12 @@ fun NativeLoginScreen(
                 }
             }
 
-            if (!agreementAccepted && !isAwaitingSms) {
+            if (!agreementAccepted && !isAwaitingSms && username.isNotBlank() && password.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "登录前必须阅读并同意用户协议与免责声明",
+                    text = "请先勾选同意用户协议与免责声明",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
@@ -388,37 +372,6 @@ fun NativeLoginScreen(
             }
             
             Spacer(modifier = Modifier.height(32.dp))
-            
-            // Info card
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "原生协议登录 · 非 WebView 登录",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "• 使用原生协议 content + authorization-str 请求\n• 登录响应在本地解密并保存票据\n• 若失败，可导出脱敏日志辅助排查",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
         }
     }
 
@@ -449,19 +402,19 @@ private fun AgreementCheckboxRow(
             onCheckedChange = onCheckedChange,
             enabled = enabled
         )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "我已阅读并同意用户协议与免责声明（必选）",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            TextButton(
-                onClick = onOpenAgreement,
-                enabled = enabled,
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text("查看协议内容")
-            }
-        }
+        Text(
+            text = "我已阅读并同意",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = "《用户协议与免责声明》",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .clickable(enabled = enabled, onClick = onOpenAgreement)
+                .padding(vertical = 6.dp)
+        )
     }
 }
 

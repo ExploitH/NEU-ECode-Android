@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mirrors the Compose background so the pre-Compose window never flashes white. -->
+    <color name="app_window_background">#FFF5F7FA</color>
+</resources>

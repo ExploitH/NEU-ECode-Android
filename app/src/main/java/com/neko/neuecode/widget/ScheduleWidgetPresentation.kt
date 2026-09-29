@@ -90,14 +90,15 @@ object ScheduleWidgetPresentation {
     }
 
     private fun toDayCard(item: ScheduleTodayItem): DayCard {
+        val colorKey = item.courseKey.ifBlank { item.eventId }
         return DayCard(
             courseName = item.courseName,
             classroom = item.classroom,
             timeLabel = "${item.startTime}-${item.endTime}",
             sectionLabel = "第${item.startSection}-${item.endSection}节",
-            backgroundColor = pastelColor(item.eventId),
-            backgroundResIndex = cardBackgroundIndex(item.eventId),
-            courseKey = item.eventId,
+            backgroundColor = pastelColor(colorKey),
+            backgroundResIndex = cardBackgroundIndex(colorKey),
+            courseKey = colorKey,
         )
     }
 
@@ -124,7 +125,7 @@ object ScheduleWidgetPresentation {
     }
 
     fun cardBackgroundIndex(courseKey: String): Int {
-        return ((CourseColorHasher.hue(courseKey) / 60f).toInt() % 6 + 6) % 6
+        return CourseColorHasher.paletteIndex(courseKey)
     }
 
     val cardBackgrounds: IntArray = intArrayOf(
@@ -134,6 +135,10 @@ object ScheduleWidgetPresentation {
         R.drawable.schedule_day_class_card_bg_3,
         R.drawable.schedule_day_class_card_bg_4,
         R.drawable.schedule_day_class_card_bg_5,
+        R.drawable.schedule_day_class_card_bg_6,
+        R.drawable.schedule_day_class_card_bg_7,
+        R.drawable.schedule_day_class_card_bg_8,
+        R.drawable.schedule_day_class_card_bg_9,
     )
 
     fun remainingTodayItems(

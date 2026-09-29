@@ -21,6 +21,8 @@ data class ScheduleTodayItem(
     val endTime: String,
     val startSection: Int,
     val endSection: Int,
+    /** Course identity for colouring; blank falls back to [eventId]. */
+    val courseKey: String = "",
 )
 
 data class CourseDetail(
@@ -123,6 +125,7 @@ object SchedulePresentation {
                     endTime = event.time.end,
                     startSection = event.sections.start,
                     endSection = event.sections.end,
+                    courseKey = courseKey(event),
                 )
             }
     }
