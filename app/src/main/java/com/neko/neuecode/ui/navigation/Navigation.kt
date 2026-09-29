@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -60,6 +61,23 @@ private val bottomBarDestinations = listOf(
     ),
     BottomBarDestination(MainDestinations.ME, MainDestinations.LABEL_ME, Icons.Outlined.Person, Icons.Filled.Person),
 )
+
+/**
+ * Between bottom-bar tabs the slide follows tab order (pay → schedule → me),
+ * whatever the back stack does; secondary screens keep push/pop direction.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.slideDirection(
+    default: AnimatedContentTransitionScope.SlideDirection,
+): AnimatedContentTransitionScope.SlideDirection {
+    val from = MainDestinations.bottomBar.indexOf(initialState.destination.route)
+    val to = MainDestinations.bottomBar.indexOf(targetState.destination.route)
+    if (from < 0 || to < 0 || from == to) return default
+    return if (to > from) {
+        AnimatedContentTransitionScope.SlideDirection.Start
+    } else {
+        AnimatedContentTransitionScope.SlideDirection.End
+    }
+}
 
 @Composable
 fun MainAppScreen(
@@ -121,25 +139,25 @@ fun MainAppScreen(
             modifier = Modifier.padding(paddingValues),
             enterTransition = {
                 fadeIn(tween(220)) + slideIntoContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    slideDirection(AnimatedContentTransitionScope.SlideDirection.Start),
                     tween(280),
                 )
             },
             exitTransition = {
                 fadeOut(tween(180)) + slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    slideDirection(AnimatedContentTransitionScope.SlideDirection.Start),
                     tween(240),
                 )
             },
             popEnterTransition = {
                 fadeIn(tween(220)) + slideIntoContainer(
-                    AnimatedContentTransitionScope.SlideDirection.End,
+                    slideDirection(AnimatedContentTransitionScope.SlideDirection.End),
                     tween(280),
                 )
             },
             popExitTransition = {
                 fadeOut(tween(180)) + slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.End,
+                    slideDirection(AnimatedContentTransitionScope.SlideDirection.End),
                     tween(240),
                 )
             },
