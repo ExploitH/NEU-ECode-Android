@@ -22,6 +22,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -35,6 +37,7 @@ import com.neko.neuecode.ui.components.Panel
 import com.neko.neuecode.ui.components.PanelDivider
 import com.neko.neuecode.ui.components.PanelRow
 import com.neko.neuecode.ui.components.SectionLabel
+import com.neko.neuecode.ui.notice.NoticeBellIconSlot
 import com.neko.neuecode.util.CacheCleaner
 import kotlinx.coroutines.launch
 
@@ -112,14 +115,16 @@ fun PersonalScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(onClick = onOpenNotices) {
-                BadgedBox(
-                    badge = {
-                        if (showNoticeBadge) {
-                            Badge()
-                        }
-                    },
-                ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable(
+                        role = Role.Button,
+                        onClick = onOpenNotices,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                NoticeBellIconSlot(showBadge = showNoticeBadge) {
                     Icon(
                         Icons.Outlined.Notifications,
                         contentDescription = "通知",

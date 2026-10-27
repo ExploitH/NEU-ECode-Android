@@ -35,6 +35,8 @@ import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.local.datastore.UserPreferences
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
+import com.neko.neuecode.ui.notice.NoticeBadgeStyle
+import com.neko.neuecode.ui.notice.NoticeMeTabIconSlot
 import com.neko.neuecode.ui.screen.academic.JwxtAcademicScreen
 import com.neko.neuecode.ui.screen.intranet.IntranetVpnScreen
 import com.neko.neuecode.ui.screen.paycode.ECodeWebViewScreen
@@ -113,10 +115,17 @@ fun MainAppScreen(
                         val selected = currentRoute == destination.route
                         NavigationBarItem(
                             icon = {
-                                Icon(
-                                    if (selected) destination.selectedIcon else destination.icon,
-                                    contentDescription = destination.label,
-                                )
+                                val iconVector = if (selected) destination.selectedIcon else destination.icon
+                                val showMeBadge = showNoticeBadge &&
+                                    NoticeBadgeStyle.mirrorBellBadgeOnMeTab &&
+                                    destination.route == NoticeBadgeStyle.bottomBarBadgeRoute
+                                if (showMeBadge) {
+                                    NoticeMeTabIconSlot(showBadge = true) {
+                                        Icon(iconVector, contentDescription = destination.label)
+                                    }
+                                } else {
+                                    Icon(iconVector, contentDescription = destination.label)
+                                }
                             },
                             label = { Text(destination.label) },
                             selected = selected,
