@@ -1,10 +1,11 @@
 # 东大码 Android
 
-[English](README.en.md) · [GitHub](https://github.com/ExploitH/NEU-ECode-Android) · [Gitee 镜像](https://gitee.com/exploith/neu-ecode) · [最新发行版](https://gitee.com/exploith/neu-ecode/releases) · [许可证](LICENSE)
+[官网](https://ecode.exploith.com) · [English](README.en.md) · [GitHub](https://github.com/ExploitH/NEU-ECode-Android) · [Gitee 镜像](https://gitee.com/exploith/neu-ecode) · [最新发行版](https://gitee.com/exploith/neu-ecode/releases) · [许可证](LICENSE)
 
 **东北大学校园生活的原生伴侣。**  
 东大码 Android 以 Kotlin、Jetpack Compose 与 Material 3 重新编排付款码、课表、成绩考试与校园内网入口，让日常校园事务回到一台干净、克制、可审计的客户端里。
 
+官网：[https://ecode.exploith.com](https://ecode.exploith.com)  
 当前公开版本：**7.6**（`versionCode 76`）
 
 > 本仓库是经过清理的公开 Android 客户端源码。仓库不包含后端源码、Cloudflare Worker 源码、私有部署配置、账号数据、会话 Cookie、签名密钥、APK 私有下载链接、原始协议密钥材料或原始诊断日志。
@@ -21,6 +22,7 @@
 
 ## 下载
 
+- **官网**：[https://ecode.exploith.com](https://ecode.exploith.com)
 - 大陆优先：[Gitee Releases](https://gitee.com/exploith/neu-ecode/releases)
 - GitHub：[ExploitH/NEU-ECode-Android/releases](https://github.com/ExploitH/NEU-ECode-Android/releases)
 - 已安装旧版时，打开应用即可收到更新提示
@@ -214,7 +216,7 @@ Android 侧流程见 [docs/CLIENT_UPDATE_FLOW.md](docs/CLIENT_UPDATE_FLOW.md)。
 | 7.0 | 68 | 首次同步 403 修复、同步进度、VPN 三态 Lottie、山川主题、按周动态翻页 |
 | 6.0 | 67 | 应用内 OpenVPN 3、协议取码大码、Sleepy 风格课表 |
 
-大陆访问优先走 [Gitee 镜像](https://gitee.com/exploith/neu-ecode)。GitHub 仍是主仓：`ExploitH/NEU-ECode-Android`。
+产品官网：[https://ecode.exploith.com](https://ecode.exploith.com)。大陆访问优先走 [Gitee 镜像](https://gitee.com/exploith/neu-ecode)。GitHub 仍是主仓：`ExploitH/NEU-ECode-Android`。
 
 ---
 

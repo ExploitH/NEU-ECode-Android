@@ -1,10 +1,11 @@
 # NEU eCode Android
 
-[中文](README.md) · [GitHub](https://github.com/ExploitH/NEU-ECode-Android) · [Gitee mirror](https://gitee.com/exploith/neu-ecode) · [Latest release](https://gitee.com/exploith/neu-ecode/releases) · [License](LICENSE)
+[Website](https://ecode.exploith.com) · [中文](README.md) · [GitHub](https://github.com/ExploitH/NEU-ECode-Android) · [Gitee mirror](https://gitee.com/exploith/neu-ecode) · [Latest release](https://gitee.com/exploith/neu-ecode/releases) · [License](LICENSE)
 
 **A native companion for campus life at Northeastern University.**  
 NEU eCode Android re-stages pay-code, timetable, grades/exams, and campus-intranet access in Kotlin, Jetpack Compose, and Material 3 — a clean, restrained, auditable client for everyday campus work.
 
+Website: [https://ecode.exploith.com](https://ecode.exploith.com)  
 Current public release: **7.6** (`versionCode 76`)
 
 > This public repository is a sanitized Android client source release. It does **not** include backend source code, Cloudflare Worker source code, private deployment config, private account data, session cookies, signing keys, private APK download links, raw protocol key material, or raw diagnostic logs.
@@ -21,6 +22,7 @@ Current public release: **7.6** (`versionCode 76`)
 
 ## Download
 
+- **Website:** [https://ecode.exploith.com](https://ecode.exploith.com)
 - Mainland China: [Gitee Releases](https://gitee.com/exploith/neu-ecode/releases)
 - GitHub: [ExploitH/NEU-ECode-Android/releases](https://github.com/ExploitH/NEU-ECode-Android/releases)
 - Older installs receive an in-app update prompt when opened
@@ -214,7 +216,7 @@ Current release line (newest first):
 | 7.0 | 68 | First-sync 403 fix, named sync progress, VPN Lottie triad, Mountain & River branding, per-week paging |
 | 6.0 | 67 | In-app OpenVPN 3, protocol pay-code, Sleepy-style timetable |
 
-Mainland access should prefer the [Gitee mirror](https://gitee.com/exploith/neu-ecode). GitHub remains the primary repository: `ExploitH/NEU-ECode-Android`.
+Product website: [https://ecode.exploith.com](https://ecode.exploith.com). Mainland access should prefer the [Gitee mirror](https://gitee.com/exploith/neu-ecode). GitHub remains the primary repository: `ExploitH/NEU-ECode-Android`.
 
 ---
 
