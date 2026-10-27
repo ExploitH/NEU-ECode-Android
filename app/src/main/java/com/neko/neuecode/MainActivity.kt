@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,8 +36,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.neko.neuecode.data.local.cookie.PersistentCookieJar
 import com.neko.neuecode.data.local.datastore.UserPreferences
+import com.neko.neuecode.data.local.notice.NoticeStore
 import com.neko.neuecode.data.remote.update.AppUpdateRepository
 import com.neko.neuecode.data.remote.update.AppVersionInfo
+import com.neko.neuecode.domain.notice.AppNotice
+import com.neko.neuecode.domain.notice.NoticeInbox
 import com.neko.neuecode.data.repository.AuthRepository
 import com.neko.neuecode.domain.model.SessionState
 import com.neko.neuecode.ui.components.BrandLoadingMark
@@ -44,6 +48,7 @@ import com.neko.neuecode.ui.components.EmptyState
 import com.neko.neuecode.ui.screen.login.NativeLoginScreen
 import com.neko.neuecode.ui.theme.NeuECodeTheme
 import com.neko.neuecode.ui.navigation.MainDestinations
+import com.neko.neuecode.ui.notice.HighPriorityNoticeSplash
 import com.neko.neuecode.ui.update.AppUpdateDialog
 import com.neko.neuecode.ui.update.UpdateVerificationActivity
 import com.neko.neuecode.util.AppUpdateInstaller
@@ -76,6 +81,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var scheduleWidgetRefresher: ScheduleWidgetRefresher
+
+    @Inject
+    lateinit var noticeStore: NoticeStore
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -110,6 +118,7 @@ class MainActivity : ComponentActivity() {
                         userPreferences = userPreferences,
                         appUpdateRepository = appUpdateRepository,
                         appUpdateInstaller = appUpdateInstaller,
+                        noticeStore = noticeStore,
                         initialStartRoute = initialStartRoute,
                     )
                 }
@@ -129,6 +138,7 @@ fun MainNavigation(
     userPreferences: UserPreferences,
     appUpdateRepository: AppUpdateRepository,
     appUpdateInstaller: AppUpdateInstaller,
+    noticeStore: NoticeStore,
     initialStartRoute: String,
 ) {
     val context = LocalContext.current
@@ -141,6 +151,9 @@ fun MainNavigation(
     var updateError by rememberSaveable { mutableStateOf<String?>(null) }
     var dismissOptionalUpdate by rememberSaveable { mutableStateOf(false) }
     var pendingInstallPath by rememberSaveable { mutableStateOf<String?>(null) }
+    val notices by noticeStore.noticesFlow.collectAsState(initial = emptyList<AppNotice>())
+    val readNoticeIds by noticeStore.readIdsFlow.collectAsState(initial = emptySet<String>())
+    var dismissNoticeSplash by rememberSaveable { mutableStateOf(false) }
 
     val verifyLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -209,11 +222,20 @@ fun MainNavigation(
                 is SessionState.Error -> state.needRelogin
                 else -> false
             }
-            updateInfo = updateDeferred.await()?.takeIf { it.updateRequired }
+            val fetched = updateDeferred.await()
+            updateInfo = fetched?.takeIf { it.updateRequired }
+            // Only rewrite the local inbox after a successful version fetch.
+            // A failed check must not wipe cached notices or break startup.
+            if (fetched != null) {
+                runCatching { noticeStore.replaceNotices(fetched.notices) }
+                    .onFailure { Timber.w(it, "Failed to cache app notices") }
+            }
         }
     }
 
     val shouldShowUpdateDialog = updateInfo?.let { it.forceUpdate || !dismissOptionalUpdate } == true
+    val splashNotices = NoticeInbox.splashNotices(notices, readNoticeIds)
+    val showNoticeBadge = NoticeInbox.showBadge(notices, readNoticeIds)
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -242,6 +264,7 @@ fun MainNavigation(
                     userPreferences = userPreferences,
                     authRepository = authRepository,
                     initialStartRoute = initialStartRoute,
+                    showNoticeBadge = showNoticeBadge,
                     onLogout = {
                         scope.launch {
                             authRepository.logout()
@@ -265,6 +288,16 @@ fun MainNavigation(
                     }
                 )
             }
+        }
+
+        if (!shouldShowUpdateDialog && !dismissNoticeSplash && splashNotices.isNotEmpty()) {
+            HighPriorityNoticeSplash(
+                notices = splashNotices,
+                onMarkRead = { noticeId ->
+                    scope.launch { noticeStore.markRead(noticeId) }
+                },
+                onLater = { dismissNoticeSplash = true },
+            )
         }
 
         if (shouldShowUpdateDialog) {

@@ -19,18 +19,21 @@ class MainDestinationsTest {
     @Test
     fun rechargeIntranetAndEcodeWebView_areSecondaryAndNotInBottomBar() {
         assertEquals(
-            listOf("recharge", "intranet", "ecodeWebView"),
+            listOf("recharge", "intranet", "ecodeWebView", "notices"),
             MainDestinations.secondary,
         )
         assertFalse(MainDestinations.bottomBar.contains("recharge"))
         assertFalse(MainDestinations.bottomBar.contains("intranet"))
         assertFalse(MainDestinations.bottomBar.contains("ecodeWebView"))
+        assertFalse(MainDestinations.bottomBar.contains("notices"))
         assertTrue(MainDestinations.isSecondary("recharge"))
         assertTrue(MainDestinations.isSecondary("intranet"))
         assertTrue(MainDestinations.isSecondary("ecodeWebView"))
+        assertTrue(MainDestinations.isSecondary("notices"))
         assertFalse(MainDestinations.isBottomBar("recharge"))
         assertFalse(MainDestinations.isBottomBar("intranet"))
         assertFalse(MainDestinations.isBottomBar("ecodeWebView"))
+        assertFalse(MainDestinations.isBottomBar("notices"))
     }
 
     @Test

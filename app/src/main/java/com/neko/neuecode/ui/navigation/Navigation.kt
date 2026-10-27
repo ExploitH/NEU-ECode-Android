@@ -39,6 +39,7 @@ import com.neko.neuecode.ui.screen.academic.JwxtAcademicScreen
 import com.neko.neuecode.ui.screen.intranet.IntranetVpnScreen
 import com.neko.neuecode.ui.screen.paycode.ECodeWebViewScreen
 import com.neko.neuecode.ui.screen.paycode.PayCodeScreen
+import com.neko.neuecode.ui.screen.notice.NoticeScreen
 import com.neko.neuecode.ui.screen.personal.PersonalScreen
 import com.neko.neuecode.ui.screen.recharge.RechargeScreen
 import com.neko.neuecode.ui.screen.schedule.JwxtScheduleScreen
@@ -86,6 +87,7 @@ fun MainAppScreen(
     userPreferences: UserPreferences,
     authRepository: AuthRepository,
     initialStartRoute: String = MainDestinations.resolveStartRoute(null),
+    showNoticeBadge: Boolean = false,
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -193,6 +195,8 @@ fun MainAppScreen(
                     onOpenIntranet = { navController.navigate(MainDestinations.INTRANET) },
                     onOpenScores = { navController.navigate(MainDestinations.academicRoute(MainDestinations.SCORES)) },
                     onOpenExams = { navController.navigate(MainDestinations.academicRoute(MainDestinations.EXAMS)) },
+                    onOpenNotices = { navController.navigate(MainDestinations.NOTICES) },
+                    showNoticeBadge = showNoticeBadge,
                 )
             }
 
@@ -206,6 +210,10 @@ fun MainAppScreen(
 
             composable(MainDestinations.INTRANET) {
                 IntranetVpnScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(MainDestinations.NOTICES) {
+                NoticeScreen(onBack = { navController.popBackStack() })
             }
 
             composable(

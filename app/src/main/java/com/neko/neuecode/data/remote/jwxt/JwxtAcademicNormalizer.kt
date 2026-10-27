@@ -56,7 +56,9 @@ object JwxtAcademicNormalizer {
                 courseNo = raw.stringOrEmpty("courseNo"),
                 courseName = raw.stringOrEmpty("courseName"),
                 courseDesc = raw.stringOrEmpty("courseDesc"),
-                date = raw.stringOrEmpty("examDate"),
+                date = com.neko.neuecode.domain.jwxt.ExamDisplayFormatter.displayDate(
+                    raw.stringOrEmpty("examDate"),
+                ),
                 place = raw.stringOrEmpty("examPlace"),
                 seatNo = raw.stringOrEmpty("examSeatNo"),
                 status = raw.stringOrEmpty("examStatus"),

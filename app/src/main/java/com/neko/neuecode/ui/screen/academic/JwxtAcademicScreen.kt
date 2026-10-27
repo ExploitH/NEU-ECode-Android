@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.neko.neuecode.domain.jwxt.AcademicKind
+import com.neko.neuecode.domain.jwxt.ExamDisplayFormatter
 import com.neko.neuecode.domain.jwxt.JwxtExam
 import com.neko.neuecode.domain.jwxt.JwxtNamedCode
 import com.neko.neuecode.domain.jwxt.JwxtScore
@@ -271,9 +272,8 @@ private fun isFailing(score: JwxtScore): Boolean {
 @Composable
 private fun ExamCard(exam: JwxtExam, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    val time = exam.timeDescription.ifBlank {
-        listOf(exam.startTime, exam.endTime).filter { it.isNotBlank() }.joinToString("-")
-    }
+    val date = ExamDisplayFormatter.displayDate(exam.date)
+    val time = ExamDisplayFormatter.displayTime(exam)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -283,7 +283,7 @@ private fun ExamCard(exam: JwxtExam, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        val whenLabel = listOf(exam.date, time).filter { it.isNotBlank() }.joinToString("  ")
+        val whenLabel = listOf(date, time).filter { it.isNotBlank() }.joinToString("  ")
         if (whenLabel.isNotBlank()) {
             Text(
                 whenLabel,

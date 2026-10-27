@@ -52,11 +52,13 @@ class ExamWidgetProvider : AppWidgetProvider() {
                 } else {
                     views.setViewVisibility(R.id.widget_exam_empty, View.GONE)
                     cards.forEach { card ->
-                        val item = RemoteViews(context.packageName, R.layout.schedule_day_class_card)
-                        item.setTextViewText(R.id.widget_day_class_name, card.courseName)
-                        item.setTextViewText(R.id.widget_day_class_meta, card.meta)
+                        val item = RemoteViews(context.packageName, R.layout.exam_widget_card)
+                        item.setTextViewText(R.id.exam_card_name, card.courseName)
+                        bindOptionalLine(item, R.id.exam_card_date, card.dateLine)
+                        bindOptionalLine(item, R.id.exam_card_time, card.timeLine)
+                        bindOptionalLine(item, R.id.exam_card_place, card.placeLine)
                         item.setInt(
-                            R.id.widget_day_class_root,
+                            R.id.exam_card_root,
                             "setBackgroundResource",
                             ScheduleWidgetPresentation.cardBackgrounds[card.backgroundResIndex],
                         )
@@ -65,6 +67,15 @@ class ExamWidgetProvider : AppWidgetProvider() {
                 }
                 views.setOnClickPendingIntent(R.id.widget_exam_root, open)
                 manager.updateAppWidget(id, views)
+            }
+        }
+
+        private fun bindOptionalLine(views: RemoteViews, viewId: Int, text: String) {
+            if (text.isBlank()) {
+                views.setViewVisibility(viewId, View.GONE)
+            } else {
+                views.setViewVisibility(viewId, View.VISIBLE)
+                views.setTextViewText(viewId, text)
             }
         }
 

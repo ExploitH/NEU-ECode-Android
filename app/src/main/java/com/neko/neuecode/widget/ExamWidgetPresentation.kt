@@ -1,5 +1,6 @@
 package com.neko.neuecode.widget
 
+import com.neko.neuecode.domain.jwxt.ExamDisplayFormatter
 import com.neko.neuecode.domain.jwxt.JwxtExamDocument
 import com.neko.neuecode.domain.jwxt.displayName
 
@@ -11,7 +12,9 @@ object ExamWidgetPresentation {
 
     data class Card(
         val courseName: String,
-        val meta: String,
+        val dateLine: String,
+        val timeLine: String,
+        val placeLine: String,
         val backgroundResIndex: Int,
     )
 
@@ -31,19 +34,14 @@ object ExamWidgetPresentation {
             .sortedWith(compareBy({ it.date }, { it.startTime }, { it.courseNo }))
             .take(limit)
             .map { exam ->
-                val time = exam.timeDescription.ifBlank {
-                    listOf(exam.startTime, exam.endTime).filter { it.isNotBlank() }.joinToString("-")
-                }
-                val seat = exam.seatNo.takeIf { it.isNotBlank() }?.let { "座位 $it" }
                 Card(
                     courseName = exam.courseName,
-                    meta = listOfNotNull(
-                        exam.date.takeIf { it.isNotBlank() },
-                        time.takeIf { it.isNotBlank() },
-                        exam.place.takeIf { it.isNotBlank() },
-                        seat,
-                    ).joinToString("  "),
-                    backgroundResIndex = ScheduleWidgetPresentation.cardBackgroundIndex(exam.courseNo.ifBlank { exam.courseName }),
+                    dateLine = ExamDisplayFormatter.displayDate(exam.date),
+                    timeLine = ExamDisplayFormatter.displayTime(exam),
+                    placeLine = ExamDisplayFormatter.displayPlace(exam),
+                    backgroundResIndex = ScheduleWidgetPresentation.cardBackgroundIndex(
+                        exam.courseNo.ifBlank { exam.courseName },
+                    ),
                 )
             }
     }

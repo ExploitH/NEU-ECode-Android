@@ -49,7 +49,8 @@ class AppUpdateRepository @Inject constructor(
                 minSupportedVersionCode = minSupportedVersionCode,
                 releaseNotes = root.stringOrNull("release_notes").orEmpty(),
                 updateRequired = explicitUpdateRequired ?: (latestVersionCode > BuildConfig.VERSION_CODE),
-                forceUpdate = explicitForceUpdate ?: (minSupportedVersionCode > BuildConfig.VERSION_CODE)
+                forceUpdate = explicitForceUpdate ?: (minSupportedVersionCode > BuildConfig.VERSION_CODE),
+                notices = runCatching { AppNoticeParser.parseNotices(root) }.getOrDefault(emptyList()),
             )
         }
     }

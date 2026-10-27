@@ -1,12 +1,15 @@
 package com.neko.neuecode.data.remote.update
 
+import com.neko.neuecode.domain.notice.AppNotice
+
 data class AppVersionInfo(
     val latestVersionCode: Int,
     val latestVersionName: String,
     val minSupportedVersionCode: Int,
     val releaseNotes: String,
     val updateRequired: Boolean,
-    val forceUpdate: Boolean
+    val forceUpdate: Boolean,
+    val notices: List<AppNotice> = emptyList(),
 )
 
 data class UpdateSession(

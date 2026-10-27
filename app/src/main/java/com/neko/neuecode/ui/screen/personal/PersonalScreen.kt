@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Grade
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.VpnLock
@@ -47,6 +48,8 @@ fun PersonalScreen(
     onOpenIntranet: () -> Unit = {},
     onOpenScores: () -> Unit = {},
     onOpenExams: () -> Unit = {},
+    onOpenNotices: () -> Unit = {},
+    showNoticeBadge: Boolean = false,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -108,6 +111,20 @@ fun PersonalScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            IconButton(onClick = onOpenNotices) {
+                BadgedBox(
+                    badge = {
+                        if (showNoticeBadge) {
+                            Badge()
+                        }
+                    },
+                ) {
+                    Icon(
+                        Icons.Outlined.Notifications,
+                        contentDescription = "通知",
+                    )
+                }
             }
         }
 

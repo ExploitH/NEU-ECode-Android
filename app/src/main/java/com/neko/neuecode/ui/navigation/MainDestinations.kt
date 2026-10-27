@@ -13,6 +13,7 @@ object MainDestinations {
     const val RECHARGE = "recharge"
     const val INTRANET = "intranet"
     const val ECODE_WEBVIEW = "ecodeWebView"
+    const val NOTICES = "notices"
     const val SCORES = "scores"
     const val EXAMS = "exams"
     const val ACADEMIC = "academic/{kind}"
@@ -22,7 +23,7 @@ object MainDestinations {
     const val LABEL_ME = "我的"
 
     val bottomBar: List<String> = listOf(PAY, SCHEDULE, ME)
-    val secondary: List<String> = listOf(RECHARGE, INTRANET, ECODE_WEBVIEW)
+    val secondary: List<String> = listOf(RECHARGE, INTRANET, ECODE_WEBVIEW, NOTICES)
 
     fun academicRoute(kind: String): String = "academic/$kind"
 
