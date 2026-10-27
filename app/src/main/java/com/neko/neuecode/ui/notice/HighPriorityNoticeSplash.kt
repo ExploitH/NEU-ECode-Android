@@ -100,9 +100,6 @@ private fun NoticeSplashBody(notice: AppNotice) {
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            notice.body,
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        NoticeRichBody(markdown = notice.body, scrollable = true)
     }
 }
