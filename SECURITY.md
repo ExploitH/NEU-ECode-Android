@@ -12,4 +12,4 @@ Please do not open public issues containing:
 - private download links
 - raw diagnostic logs that may contain personal data
 
-Runtime protocol configuration and gated update metadata are served by maintainer-operated private infrastructure so distributed APKs can work without committing key material, Worker code, or download links to this repository. If you need to report a sensitive issue, redact all secrets first or contact the maintainer privately.
+Runtime protocol configuration and gated update metadata are served by maintainer-operated private infrastructure so distributed APKs can work without committing key material, Worker code, or download links to this repository. If you need to report a sensitive issue, redact all secrets first, or contact the maintainer in QQ group `NEU Ecode Community Ops` (`289426082`).
