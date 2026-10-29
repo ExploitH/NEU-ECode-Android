@@ -2,6 +2,7 @@ package com.neko.neuecode.ui.screen.paycode
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,13 +50,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
 import com.neko.neuecode.domain.model.Balance
 import com.neko.neuecode.ui.components.BrandLoadingMark
 import com.neko.neuecode.ui.components.Panel
@@ -465,17 +466,32 @@ private fun SmsChallengeSection(
                     label = { Text("图形验证码") },
                     singleLine = true,
                 )
-                if (!state.captchaImageUrl.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    AsyncImage(
-                        model = state.captchaImageUrl,
-                        contentDescription = "图形验证码",
-                        modifier = Modifier
-                            .width(104.dp)
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.FillBounds,
-                    )
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .width(104.dp)
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colors.surfaceVariant)
+                        .clickable(onClick = onRefreshCaptcha),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val captcha = state.captchaImage
+                    if (captcha != null) {
+                        val imageBitmap = remember(captcha) { captcha.asImageBitmap() }
+                        Image(
+                            bitmap = imageBitmap,
+                            contentDescription = "图形验证码",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.FillBounds,
+                        )
+                    } else {
+                        Text(
+                            text = "点击加载",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             TextButton(onClick = onRefreshCaptcha, modifier = Modifier.align(Alignment.End)) {

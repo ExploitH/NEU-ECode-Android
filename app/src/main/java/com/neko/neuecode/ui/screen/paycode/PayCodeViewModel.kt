@@ -1,6 +1,8 @@
 package com.neko.neuecode.ui.screen.paycode
 
 import android.app.Application
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.neko.neuecode.data.local.datastore.UserPreferences
@@ -41,7 +43,7 @@ data class PayCodeUiState(
     val switchHint: String = "",
     val graphicCaptcha: String = "",
     val smsCode: String = "",
-    val captchaImageUrl: String? = null,
+    val captchaImage: Bitmap? = null,
     val challengeMessage: String? = null,
     val sendingSms: Boolean = false,
     val submittingSms: Boolean = false,
@@ -67,6 +69,8 @@ class PayCodeViewModel @Inject constructor(
     )
     val uiState: StateFlow<PayCodeUiState> = _uiState.asStateFlow()
     private var autoFetchJob: Job? = null
+
+    private var captchaLoadGeneration = 0
 
     init {
         viewModelScope.launch {
@@ -142,10 +146,8 @@ class PayCodeViewModel @Inject constructor(
     }
 
     fun refreshCaptchaImage() {
-        _uiState.value = _uiState.value.copy(
-            captchaImageUrl = secondAuthClient.refreshCaptchaUrl(),
-            challengeMessage = null,
-        )
+        _uiState.value = _uiState.value.copy(graphicCaptcha = "")
+        loadCaptchaImage(force = true, clearMessage = true)
     }
 
     fun sendSmsCode() {
@@ -174,7 +176,7 @@ class PayCodeViewModel @Inject constructor(
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     secondAuthClient.sendSmsCode(
-                        pageUrl = "https://pass.neu.edu.cn/tpass/login?service=https%3A%2F%2Fecode.neu.edu.cn%2Fecode%2Fapi%2Fsso%2Flogin",
+                        pageUrl = casSecondAuthPageUrl(),
                         graphicCaptcha = graphic,
                     )
                 }.getOrElse { error ->
@@ -187,8 +189,11 @@ class PayCodeViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 sendingSms = false,
                 challengeMessage = result.message,
-                captchaImageUrl = if (result.ok) _uiState.value.captchaImageUrl else secondAuthClient.refreshCaptchaUrl(),
+                graphicCaptcha = if (result.ok) _uiState.value.graphicCaptcha else "",
             )
+            if (!result.ok) {
+                loadCaptchaImage(force = true, clearMessage = false)
+            }
         }
     }
 
@@ -316,8 +321,8 @@ class PayCodeViewModel @Inject constructor(
                         switchHint = _uiState.value.switchHint,
                         maskedPhone = payCodeRepository.pendingSmsChallenge()?.maskedPhone,
                     ),
-                    captchaImageUrl = _uiState.value.captchaImageUrl ?: secondAuthClient.refreshCaptchaUrl(),
                 )
+                loadCaptchaImage(force = false, clearMessage = false)
                 return@launch
             }
             refresh(userInitiated = true)
@@ -446,14 +451,13 @@ class PayCodeViewModel @Inject constructor(
                     switchHint = snapshot.switchHint,
                     autoRefresh = snapshot.autoRefreshOn,
                     yhtSms = yhtSms,
-                    captchaImageUrl = if (snapshot.lockedBySms && casSms) {
-                        _uiState.value.captchaImageUrl ?: secondAuthClient.refreshCaptchaUrl()
-                    } else {
-                        null
-                    },
+                    captchaImage = if (snapshot.lockedBySms && casSms) _uiState.value.captchaImage else null,
                     challengeMessage = if (snapshot.lockedBySms) snapshot.switchHint else null,
                     balanceError = if (yhtSms) null else _uiState.value.balanceError,
                 )
+                if (snapshot.lockedBySms && casSms) {
+                    loadCaptchaImage(force = false, clearMessage = false)
+                }
                 persistWidgetQr(payCode)
                 scheduleAutoFetch(payCode, snapshot.lockedBySms, snapshot.userSwitchOn, snapshot.autoRefreshOn)
             }
@@ -494,6 +498,37 @@ class PayCodeViewModel @Inject constructor(
     private fun stopAutoFetch() {
         autoFetchJob?.cancel()
         autoFetchJob = null
+    }
+
+    private fun casSecondAuthPageUrl(): String {
+        return payCodeRepository.pendingSmsChallenge()?.formAction?.takeIf { it.isNotBlank() }
+            ?: "https://pass.neu.edu.cn/tpass/login?service=https%3A%2F%2Fecode.neu.edu.cn%2Fecode%2Fapi%2Fsso%2Flogin"
+    }
+
+    private fun loadCaptchaImage(force: Boolean, clearMessage: Boolean) {
+        if (!force && _uiState.value.captchaImage != null) return
+        val generation = ++captchaLoadGeneration
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                captchaImage = if (force) null else _uiState.value.captchaImage,
+                challengeMessage = if (clearMessage) null else _uiState.value.challengeMessage,
+            )
+            val bitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    val bytes = secondAuthClient.fetchCaptchaImage(casSecondAuthPageUrl())
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                }.getOrNull()
+            }
+            if (generation != captchaLoadGeneration) return@launch
+            _uiState.value = _uiState.value.copy(
+                captchaImage = bitmap ?: _uiState.value.captchaImage,
+                challengeMessage = when {
+                    bitmap != null -> _uiState.value.challengeMessage
+                    !_uiState.value.challengeMessage.isNullOrBlank() -> _uiState.value.challengeMessage
+                    else -> "图形验证码加载失败，请点「看不清，换一张」"
+                },
+            )
+        }
     }
 
     fun setWidgetShowBalance(show: Boolean) {

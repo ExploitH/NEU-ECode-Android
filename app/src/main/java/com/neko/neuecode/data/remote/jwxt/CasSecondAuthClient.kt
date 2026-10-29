@@ -6,6 +6,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.IOException
+import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,9 +31,34 @@ class CasSecondAuthClient @Inject constructor(
         .followSslRedirects(true)
         .build()
 
-    fun refreshCaptchaUrl(): String {
-        val stamp = System.currentTimeMillis()
-        return "https://pass.neu.edu.cn/tpass/code?$stamp"
+    fun captchaImageUrl(pageUrl: String): String {
+        return URI(pageUrl).resolve("/tpass/code?${System.currentTimeMillis()}").toString()
+    }
+
+    /**
+     * Fetch the graphic captcha through the shared CAS CookieJar.
+     * Coil/default ImageLoader GETs `/tpass/code` without JSESSIONID, so the
+     * user sees a different image than `secondAuthCode` validates.
+     */
+    fun fetchCaptchaImage(pageUrl: String): ByteArray {
+        val url = captchaImageUrl(pageUrl)
+        val response = http.newCall(
+            Request.Builder()
+                .url(url)
+                .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
+                .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
+                .header("Referer", pageUrl)
+                .get()
+                .build(),
+        ).execute()
+        val bytes = response.use { current ->
+            val payload = current.body?.bytes() ?: ByteArray(0)
+            if (!current.isSuccessful || payload.isEmpty()) {
+                throw IOException("captcha image HTTP ${current.code}")
+            }
+            payload
+        }
+        return bytes
     }
 
     fun sendSmsCode(
