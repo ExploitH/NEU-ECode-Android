@@ -99,15 +99,30 @@ class CampusIntranetProbe @Inject constructor() {
                 val process = ProcessBuilder("ping", "-c", "1", "-W", TIMEOUT_SECONDS.toString(), host)
                     .redirectErrorStream(true)
                     .start()
-                val finished = process.waitFor(TIMEOUT_SECONDS + 1L, TimeUnit.SECONDS)
-                if (!finished) {
-                    process.destroyForcibly()
-                    return PingOutcome(exitCode = -1, timedOut = true)
+                try {
+                    val finished = waitForProcess(process, TimeUnit.SECONDS.toMillis(TIMEOUT_SECONDS + 1L))
+                    if (!finished) PingOutcome(exitCode = -1, timedOut = true)
+                    else PingOutcome(exitCode = process.exitValue(), timedOut = false)
+                } finally {
+                    process.destroy()
                 }
-                PingOutcome(exitCode = process.exitValue(), timedOut = false)
             } catch (e: Exception) {
                 Timber.w(e, "system ping unavailable")
                 PingOutcome(exitCode = -1, timedOut = true)
+            }
+        }
+
+        /** Process.waitFor(timeout, unit) is unavailable before Android 8. */
+        internal fun waitForProcess(process: Process, timeoutMs: Long): Boolean {
+            val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
+            while (true) {
+                try {
+                    process.exitValue()
+                    return true
+                } catch (_: IllegalThreadStateException) {
+                    if (System.nanoTime() >= deadline) return false
+                    Thread.sleep(20)
+                }
             }
         }
 

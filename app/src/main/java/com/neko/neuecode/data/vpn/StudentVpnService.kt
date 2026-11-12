@@ -164,7 +164,12 @@ class StudentVpnService : VpnService() {
         runCatching { core.disconnect() }
         tun.getAndSet(null)?.close()
         controller.onCoreEvent("DISCONNECTED", "stopped", error = false, fatal = false)
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
         stopSelf()
     }
 

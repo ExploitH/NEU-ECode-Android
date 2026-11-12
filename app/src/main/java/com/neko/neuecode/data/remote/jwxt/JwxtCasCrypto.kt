@@ -3,7 +3,8 @@ package com.neko.neuecode.data.remote.jwxt
 import java.net.URI
 import java.security.KeyFactory
 import java.security.spec.X509EncodedKeySpec
-import java.util.Base64
+import okio.ByteString.Companion.decodeBase64
+import okio.ByteString.Companion.toByteString
 import java.util.regex.Pattern
 import javax.crypto.Cipher
 
@@ -25,12 +26,12 @@ object JwxtCasCrypto {
 
     fun encryptCredentials(publicKeyB64: String, username: String, password: String): String {
         val publicKey = KeyFactory.getInstance("RSA").generatePublic(
-            X509EncodedKeySpec(Base64.getDecoder().decode(publicKeyB64))
+            X509EncodedKeySpec(requireNotNull(publicKeyB64.decodeBase64()) { "Invalid CAS public key" }.toByteArray())
         )
         val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
         cipher.init(Cipher.ENCRYPT_MODE, publicKey)
         val encrypted = cipher.doFinal((username + password).toByteArray(Charsets.UTF_8))
-        return Base64.getEncoder().encodeToString(encrypted)
+        return encrypted.toByteString().base64()
     }
 
     fun buildLoginSubmission(

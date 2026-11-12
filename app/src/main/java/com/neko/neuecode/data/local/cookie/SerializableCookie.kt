@@ -48,7 +48,7 @@ data class SerializableCookie(
                         System.currentTimeMillis() + (httpCookie.maxAge * 1000L)
                     } else 0L,
                     secure = httpCookie.secure,
-                    httpOnly = httpCookie.isHttpOnly,
+                    httpOnly = setCookieValue.split(';').drop(1).any { it.trim().equals("HttpOnly", ignoreCase = true) },
                     hostOnly = httpCookie.domain == null,
                     persistent = httpCookie.maxAge > 0
                 )

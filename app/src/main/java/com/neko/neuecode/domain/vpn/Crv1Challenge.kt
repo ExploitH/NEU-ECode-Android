@@ -1,6 +1,6 @@
 package com.neko.neuecode.domain.vpn
 
-import java.util.Base64
+import okio.ByteString.Companion.decodeBase64
 
 /**
  * Official OpenVPN 3 dynamic challenge (`openvpn/auth/cr.hpp`):
@@ -29,11 +29,7 @@ data class Crv1Challenge(
             if (parts.size != 5 || parts[0] != "CRV1") return null
             if (parts[2].isBlank()) return null
             val flags = parts[1].split(',').map { it.trim() }.filter { it.isNotEmpty() }
-            val username = try {
-                String(Base64.getDecoder().decode(parts[3]), Charsets.UTF_8)
-            } catch (_: IllegalArgumentException) {
-                return null
-            }
+            val username = parts[3].decodeBase64()?.utf8() ?: return null
             return Crv1Challenge(
                 stateId = parts[2],
                 username = username,
