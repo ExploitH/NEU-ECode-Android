@@ -18,6 +18,7 @@ import com.neko.neuecode.domain.jwxt.JwxtScoreDocument
 import com.neko.neuecode.domain.jwxt.ScheduleLoginInitHint
 import com.neko.neuecode.domain.model.Result
 import com.neko.neuecode.widget.ExamWidgetProvider
+import com.neko.neuecode.widget.ExamWidgetVisibilityAlarm
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -138,6 +139,7 @@ class JwxtAcademicViewModel @Inject constructor(
                         is Result.Success -> {
                             cacheStore.saveExams(result.data)
                             ExamWidgetProvider.updateAll(appContext)
+                            ExamWidgetVisibilityAlarm.scheduleNext(appContext)
                             finishSyncProgress(
                                 loading = false,
                                 message = "${result.data.term.name} · ${result.data.summary.count} 场考试",

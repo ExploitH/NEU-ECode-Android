@@ -10,6 +10,7 @@ class ScheduleWidgetClockReceiver : BroadcastReceiver() {
         if (!ScheduleWidgetRefreshPolicy.acceptsRefreshAction(intent.action)) return
         Timber.d("Schedule widget clock event: %s", intent.action)
         ScheduleWidgetUpdater.updateAll(context)
+        ExamWidgetProvider.updateAll(context)
         ScheduleWidgetMidnightAlarm.scheduleNext(context)
     }
 }

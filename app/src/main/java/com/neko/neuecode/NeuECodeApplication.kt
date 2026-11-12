@@ -63,6 +63,8 @@ class NeuECodeApplication : Application(), Configuration.Provider {
 
             // Refresh at the next local date boundary without exact-alarm permission.
             com.neko.neuecode.widget.ScheduleWidgetMidnightAlarm.scheduleNext(this)
+            com.neko.neuecode.widget.ExamWidgetProvider.updateAll(this)
+            com.neko.neuecode.widget.ExamWidgetVisibilityAlarm.scheduleNext(this)
             
             Timber.i("Background tasks scheduled successfully")
         } catch (e: Exception) {

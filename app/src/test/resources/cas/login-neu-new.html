@@ -1,0 +1,350 @@
+<html lang="zh-cn">
+<head>
+    
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1">
+    <meta name="keywords" content="">
+    <meta name="decription" content="">
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" type="text/css" href="/tpass/comm/neu/css/login-style-new.css">
+    <title>智慧东大--统一身份认证</title>
+    <link rel="shortcut icon" type="image/x-icon" href="neuicon.ico">
+    <style>
+        .errorMsgStyle {
+            color: red;
+            display: block;
+            text-align: left;
+            margin-bottom: 10px;
+            margin-top: -10px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        .help {
+            color: #2379bc;
+            margin: 27px auto 0 auto;
+            font-size: 14px;
+            clear: both;
+            display: block;
+            width: 300px;
+            text-align: center;
+        }
+        .qrcode-box.qr-box {
+            position: relative;
+            background-image: none;
+            background-color: #fff;
+            opacity: 1;
+        }
+        .qr-box #qr_container,
+        .qr-box #qr_container img,
+        .qr-box #qr_container canvas {
+            width: 176px !important;
+            height: 176px !important;
+        }
+        .qr-box .qr-mask {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 176px;
+            height: 176px;
+            padding: 0 10px;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, .94);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 14px;
+            line-height: 22px;
+            color: #333;
+            white-space: pre-line;
+        }
+        .qr-box .qr-mask .qr-refresh {
+            display: block;
+            margin-top: 10px;
+            color: #2e4e9e;
+            cursor: pointer;
+        }
+        .login-panel.active .pc-icon {
+            display: none;
+        }
+        /* 选择账号容器为空时不要参与 flex 布局，避免与登录面板平分宽度导致内容偏左 */
+        #accountForm:empty {
+            display: none;
+        }
+        @media screen and (max-width: 920px) {
+            .login-outside-container .login-body-row .login-panel.qr-mod {
+                min-height: calc(100vh - 160px) !important;
+            }
+            .login-outside-container .login-body-row .login-panel .panel-left {
+                width: 100%;
+                flex: 1;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+            }
+            .login-outside-container .login-body-row .login-panel .panel-left .scan-title {
+                margin-bottom: 40px;
+            }
+            .login-outside-container .login-body-row .login-panel .panel-left .qrcode-container {
+                margin: 0 auto 25px;
+            }
+            /* 窄屏未显式选择模式时（如 PC 窗口被拖窄、横竖屏切换），默认展示账号密码面板，
+               避免出现「只剩二维码」或「两列都隐藏」的空白 */
+            .login-outside-container .login-body-row .login-panel:not(.active):not(.qr-mod) .panel-left {
+                display: none;
+            }
+            .login-outside-container .login-body-row .login-panel:not(.active):not(.qr-mod) .panel-right {
+                display: flex !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-outside-container">
+    <div class="login-header-row">
+        <div class="login-header-inside"><img src="/tpass/comm/neu/image/logo-pic.png" alt="Logo" class="logo-img"></div>
+    </div>
+    <div class="login-body-row">
+        <div class="login-panel ">
+            <!--登录 START-->
+            <div id="login-body-div" class="login-panel-inside">
+                <a class="switch-login">
+                    <div class="switch-login-mode-box">
+								<span class="universe-icon switch-icon">
+									<svg class="qrcode-icon" width="1em" height="1em" viewbox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" data-icon="QrOutlined" style="width:28px;height:28px;">
+										<path d="M6.5 7.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1Z" fill="currentColor"></path>
+										<path d="M4.5 2.5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h7c1.1 0 2-.9 2-2v-7c0-1.1-.9-2-2-2h-7Zm0 2h7v7h-7v-7ZM11 16a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm0 3.5a1 1 0 1 1 2 0v1a1 1 0 1 1-2 0v-1Zm4-7.5a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm3.5 0a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1ZM15 17c0-1.1.9-2 2-2h2.5c1.1 0 2 .9 2 2v2.5c0 1.1-.9 2-2 2H17c-1.1 0-2-.9-2-2V17Zm4.5 0H17v2.5h2.5V17Zm-15-2c-1.1 0-2 .9-2 2v2.5c0 1.1.9 2 2 2H7c1.1 0 2-.9 2-2V17c0-1.1-.9-2-2-2H4.5Zm0 2H7v2.5H4.5V17ZM15 4.5c0-1.1.9-2 2-2h2.5c1.1 0 2 .9 2 2V7c0 1.1-.9 2-2 2H17c-1.1 0-2-.9-2-2V4.5Zm4.5 0H17V7h2.5V4.5Z" fill="currentColor"></path>
+									</svg>
+
+									<svg class="pc-icon" width="1em" height="1em" viewbox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-icon="ComputerOutlined" style="width:28px;height:28px;">
+										<path d="M1 4c0-1.1.9-2 2-2h18c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2h-8v2h4a1 1 0 1 1 0 2H7a1 1 0 1 1 0-2h4v-2H3c-1.1 0-2-.9-2-2V4Zm20 0H3v12h18V4Z" fill="currentColor"></path>
+									</svg>
+								</span>
+                    </div>
+                </a>
+                <div class="panel-left">
+                    <div class="scan-title">手机扫码登录</div>
+                    <div class="qrcode-container">
+                        <div class="qrcode-box qr-box">
+                            <div id="qr_container"></div>
+                            <div id="qr_mask" class="qr-mask" style="display:none;">
+                                <div id="qr_mask_text"></div>
+                                <a id="qr_refresh_btn" class="qr-refresh">刷新二维码</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="scan-tip" id="qr_scan_tip">打开<span class="blue-text">智慧东大</span>app扫码登录</div>
+                </div>
+                <div class="panel-right">
+                    <form id="loginForm" action="/tpass/login?service=https%3A%2F%2Fjwxt.neu.edu.cn%2Fjwapp%2Fsys%2Fhomeapp%2Findex.do" method="post">
+                    <div class="login-part">
+                        <div class="login-tabs">
+                            <div id="password_login" class="tab-item active">密码登录</div>
+                            <div class="tab-divider"></div>
+                            <div id="loginByMobile" class="tab-item">短信登录</div>
+                        </div>
+                        <div id="login_content" class="login-content">
+                            
+                            <span class="errorMsgStyle" id="errormsg" style="display:none;">账号不存在！</span>
+                            
+                            <!--密码登录 START-->
+                            <div class="login-form">
+                                <div class="input-groups">
+                                    <div class="input-group">
+                                        <input type="text" placeholder="工资号/学号" id="un" name="un">
+                                    </div>
+                                    <div class="input-group">
+                                        <input type="password" placeholder="输入密码" id="pd" name="pd">
+                                    </div>
+                                    
+                                </div>
+                                <button id="index_login_btn" class="login-btn">登录</button>
+                                <div class="login-tools">
+                                    <img id="wx_qrcode_login" src="/tpass/comm/neu/image/wx-icon.png" class="wx-icon" alt="WeChat">
+                                    <div class="divider-v"></div>
+                                    <a href="pwd" class="forgot-pwd">忘记密码</a>
+                                </div>
+                            </div>
+                            <!--密码登录 END-->
+                            <div class="warm-tips">
+                                <div class="tips-title">温馨提示：</div>
+                                <p>1.用户名为“工资号 / 学号”，教职工账号为8位工资号，不足 8 位的前面用 0 补齐，秦皇岛分校教职工在工号前加 1 补齐。</p>
+                                <p>2.咨询电话：83687240、83681656。</p>
+                                <p>3.<a href="https://pass.neu.edu.cn/webinf/view/help-page/help/help-page-home.html" class="blue-text" target="_blank">详细登录指南。</a></p>
+                            </div>
+                        </div>
+
+                    </div>
+                    <input type="hidden" id="rsa" name="rsa">
+                    <input type="hidden" id="ul" name="ul">
+                    <input type="hidden" id="pl" name="pl">
+                    <input type="hidden" id="lt" name="lt" value="[REDACTED]">
+                    <input type="hidden" name="execution" value="[REDACTED]">
+                    <input type="hidden" name="_eventId" value="submit">
+                    <input type="hidden" id="r_t_un" name="t_un">
+                    <input type="hidden" id="r_t_pd" name="t_pd">
+                    <input type="hidden" id="r_t_c" name="t_c">
+                    <p style="display:none;">
+                        
+                    </p>
+                    </form>
+                </div>
+            </div>
+            <!--登录 END-->
+            <div id="accountForm" class="login-panel-inside"></div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="/tpass/comm/js/jquery.min.js"></script>
+<script type="text/javascript" src="/tpass/comm/js/des.js"></script>
+<script type="text/javascript" src="/tpass/comm/js/qrcode.js"></script>
+<script type="text/javascript" src="/tpass/comm/neu/js/qr-scan-login.js"></script>
+<script type="text/javascript" src="/tpass/comm/js/login-qrcode.js"></script>
+<script type="text/javascript" src="/tpass/comm/js/swiper.jquery.min.js"></script>
+<script type="text/javascript" src="/tpass/comm/plugin/layer/layer.js"></script>
+<script type="text/javascript" src="/tpass/comm/plugin/fingerprintjs2/fingerprint2.js"></script>
+<script type="text/javascript" src="/tpass/comm/neu/js/md5.js"></script>
+<script type="text/javascript" src="/tpass/comm/neu/js/rsa.js"></script>
+<script type="text/javascript" src="/tpass/comm/neu/js/login_neu_new.js"></script>
+
+<script id="password_template" type="text/html">
+    
+    <span class="errorMsgStyle" id="errormsg" style="display:none;">账号不存在！</span>
+    
+    <!--密码登录 START-->
+        <div class="login-form">
+            <div class="input-groups">
+                <div class="input-group">
+                    <input type="text" placeholder="工资号/学号" id="un" name="un">
+                </div>
+                <div class="input-group">
+                    <input type="password" placeholder="输入密码" id="pd" name="pd">
+                </div>
+                
+            </div>
+            <button id="index_login_btn" class="login-btn">登录</button>
+            <div class="login-tools">
+                <img id="wx_qrcode_login" src="/tpass/comm/neu/image/wx-icon.png" class="wx-icon" alt="WeChat">
+                <div class="divider-v"></div>
+                <a href="pwd" class="forgot-pwd">忘记密码</a>
+            </div>
+        </div>
+    <!--密码登录 END-->
+    <div class="warm-tips">
+        <div class="tips-title">温馨提示：</div>
+        <p>1.用户名为“工资号 / 学号”，教职工账号为8位工资号，不足 8 位的前面用 0 补齐，秦皇岛分校教职工在工号前加 1 补齐。</p>
+        <p>2.咨询电话：83687240、83681656。</p>
+        <p>3.<a href="https://pass.neu.edu.cn/webinf/view/help-page/help/help-page-home.html" class="blue-text" target="_blank">详细登录指南。</a></p>
+    </div>
+</script>
+
+<script id="mobile_template" type="text/html">
+    
+    <span class="errorMsgStyle" id="errormsg" style="display:none;">账号不存在！</span>
+    
+    <!--短信登录 START-->
+        <div class="login-form">
+            <div class="input-groups">
+                <div class="input-group">
+
+                    <input id="loginMobile" type="text" placeholder="请输入手机号">
+                </div>
+                <div class="input-group" style="padding: 0 0px 0px 15px;align-items: normal;">
+                    <input id="sendConfirm" name="code" type="text" placeholder="请输入图形验证码">
+                    <img src="/tpass/code" id="codeImage" style="cursor: pointer;">
+                </div>
+                <div class="input-group">
+                    <input id="phoneCode" type="text" placeholder="请输入验证码">
+                    <span id="getMobileVerifyCode" class="get-code-btn">获取验证码</span>
+                </div>
+            </div>
+            <button id="finishloginbymobile" type="button" class="login-btn">登录</button>
+            <div class="login-tools">
+                <img id="wx_qrcode_login" src="/tpass/comm/neu/image/wx-icon.png" class="wx-icon" alt="WeChat">
+                <div class="divider-v"></div>
+                <a href="pwd" class="forgot-pwd">忘记密码</a>
+            </div>
+    </div>
+    <!--短信登录 END-->
+    <div class="warm-tips">
+        <div class="tips-title">如收不到验证码：</div>
+        <p>1.请检查短信是否被安全软件拦截。</p>
+        <p>2.运营业商网络原因，短信可能延迟到达，建议您更换登录方式。</p>
+        <p>3.咨询电话：83687240、83681656。</p>
+    </div>
+</script>
+
+<script id="account_select_template" type="text/html">
+    <!--选择登录帐号 START-->
+        <div class="select-account-container">
+            <div class="auth-header">
+                <a id="closecardlist" class="back-link">返回</a>
+                <div class="title">选择登录帐号</div>
+            </div>
+            <div id="account-desc" class="account-desc">该手机号下绑定多个帐号，请选择需要登录的帐号</div>
+            <div id="numberlist" class="account-list">
+            </div>
+            <button id="chooseAccountSubmit" class="login-btn">立即登录</button>
+        </div>
+    <!--选择登录帐号 END-->
+</script>
+
+<script id="wx_qrcode_template" type="text/html">
+    <div class="select-account-container">
+        <div class="auth-header">
+            <a id="closecardlist" class="back-link">返回</a>
+            <div class="title">微信扫码登录</div>
+        </div>
+        <div id="qrcode" style="margin: 68px auto 0; display: -webkit-box; display: -ms-flexbox; display: flex; -webkit-box-pack: center; -ms-flex-pack: center; justify-content: center;">
+        </div>
+        <div id="account-desc" style="margin-top:27px;text-align: center;" class="account-desc">扫二维码登录校园服务门户</div>
+        <a href="https://pass.neu.edu.cn/portal/wechat/help/wechat-help.html" class="help" target="_blank">使用帮助</a>
+    </div>
+</script>
+
+<script id="second_auth_template" type="text/html">
+    <!--二次认证 START-->
+    <div class="panel-right second-auth">
+        <div class="second-page-container">
+            <div class="auth-header">
+                <a href="#" class="back-link">返回</a>
+                <div class="title">二次认证</div>
+            </div>
+            <div class="auth-desc">
+                为保障您的账号安全，当前设备需进行身份验证<br>
+                点击获取验证码，我们将向您的绑定手机号发送验证码
+            </div>
+            <div class="bind-phone-section">
+                <div class="label">绑定手机号：</div>
+                <div class="phone-number">186****1233</div>
+            </div>
+            <div class="login-form">
+                <div class="input-groups">
+                    <div class="input-group">
+                        <input type="text" placeholder="请输入验证码">
+                        <span class="get-code-btn">获取验证码</span>
+                    </div>
+                </div>
+                <div class="trust-device">
+                    <label>
+                        <input type="checkbox"> 信任此设备
+                    </label>
+                </div>
+                <button class="login-btn">登录</button>
+            </div>
+            <div class="warm-tips">
+                <div class="tips-title">如收不到验证码：</div>
+                <p>1.请检查短信是否被安全软件拦截</p>
+                <p>2.运营商网络问题，短信可能延迟到达，建议您更换登录方式</p>
+            </div>
+        </div>
+    </div>
+    <!--二次认证 END-->
+</script>
+</body>
+</html>

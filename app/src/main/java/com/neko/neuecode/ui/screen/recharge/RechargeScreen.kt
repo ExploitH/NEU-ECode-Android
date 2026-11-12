@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -33,6 +34,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,6 +45,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.neko.neuecode.data.repository.RechargeSession
+import com.neko.neuecode.data.repository.RechargeSessionRepository
 import timber.log.Timber
 import java.io.File
 import java.text.SimpleDateFormat
@@ -59,11 +65,20 @@ private const val APP_UA_SUFFIX = " NEU-eCode-Kotlin/6.0"
 @Composable
 fun RechargeScreen(
     onBack: (() -> Unit)? = null,
+    viewModel: RechargeViewModel = hiltViewModel(),
 ) {
     var currentUrl by rememberSaveable { mutableStateOf(RECHARGE_URL) }
     var statusText by rememberSaveable { mutableStateOf("等待页面加载") }
     var isLoading by rememberSaveable { mutableStateOf(true) }
     var reloadKey by rememberSaveable { mutableIntStateOf(0) }
+    var preparedSession by remember(reloadKey) { mutableStateOf<RechargeSession?>(null) }
+
+    LaunchedEffect(reloadKey) {
+        isLoading = true
+        statusText = "正在恢复充值登录…"
+        preparedSession = viewModel.prepare()
+        if (preparedSession is RechargeSession.Error) isLoading = false
+    }
 
     fun reloadRecharge() {
         currentUrl = RECHARGE_URL
@@ -99,7 +114,23 @@ fun RechargeScreen(
             }
         }
 
-        key(reloadKey) {
+        val session = preparedSession
+        if (session is RechargeSession.ManualLogin) {
+            Text(session.message, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        }
+        if (session is RechargeSession.Verification && currentUrl.contains("pass.neu.edu.cn")) {
+            Text("学校要求安全验证，请在下方完成后继续", modifier = Modifier.padding(16.dp))
+        }
+        if (session is RechargeSession.Error) {
+            Text(session.message, modifier = Modifier.padding(16.dp))
+        }
+        val entryUrl = when (session) {
+            is RechargeSession.Ready -> session.url
+            is RechargeSession.ManualLogin -> session.url
+            is RechargeSession.Verification -> session.baseUrl
+            is RechargeSession.Error, null -> null
+        }
+        if (entryUrl != null) key(reloadKey) {
             AndroidView(
                 factory = { context ->
                     FrameLayout(context).apply {
@@ -114,6 +145,9 @@ fun RechargeScreen(
                         addView(mainWebView)
 
                         configureRechargeWebView(mainWebView)
+                        if (session is RechargeSession.Verification) {
+                            mainWebView.settings.userAgentString = com.neko.neuecode.data.remote.NeuCampusHttp.BROWSER_USER_AGENT
+                        }
                         CookieManager.getInstance().apply {
                             setAcceptCookie(true)
                             setAcceptThirdPartyCookies(mainWebView, true)
@@ -137,11 +171,27 @@ fun RechargeScreen(
                             setLoading = { isLoading = it }
                         )
 
-                        appendRechargeLog("RECHARGE_LOAD_INITIAL", RECHARGE_URL)
-                        mainWebView.loadUrl(RECHARGE_URL)
+                        appendRechargeLog("RECHARGE_LOAD_INITIAL", entryUrl)
+                        if (session is RechargeSession.Verification) {
+                            mainWebView.loadDataWithBaseURL(entryUrl, session.html, "text/html", "UTF-8", entryUrl)
+                        } else {
+                            mainWebView.loadUrl(entryUrl)
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
+                onRelease = { container ->
+                    // Do not leave hidden WebViews mutating the session after refresh/back.
+                    for (index in container.childCount - 1 downTo 0) {
+                        (container.getChildAt(index) as? WebView)?.let { web ->
+                            web.stopLoading()
+                            web.webViewClient = WebViewClient()
+                            web.webChromeClient = null
+                            container.removeView(web)
+                            web.destroy()
+                        }
+                    }
+                },
                 update = { /* navigation is owned by WebView callbacks; avoid Compose reload loops */ }
             )
         }
@@ -286,6 +336,7 @@ private fun createRechargeWebViewClient(
     setLoading: (Boolean) -> Unit
 ): WebViewClient {
     return object : WebViewClient() {
+        private var loginShellRedirected = false
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
             url?.let {
@@ -310,10 +361,15 @@ private fun createRechargeWebViewClient(
                 )
                 setLoading(false)
                 appendRechargeLog(if (isPopup) "RECHARGE_POPUP_FINISHED" else "RECHARGE_PAGE_FINISHED", it)
-                if (!isPopup && it.isRechargeLoginShellUrl()) {
+                if (!isPopup && !loginShellRedirected && RechargeSessionRepository.isLoginShell(it)) {
+                    loginShellRedirected = true
                     setStatusText("进入统一身份认证…")
                     appendRechargeLog("RECHARGE_AUTO_CAS_LOGIN", RECHARGE_LOGIN_URL)
-                    view?.postDelayed({ view.loadUrl(RECHARGE_LOGIN_URL) }, 250)
+                    view?.post {
+                        if (RechargeSessionRepository.isLoginShell(view.url.orEmpty())) {
+                            view.loadUrl(RECHARGE_LOGIN_URL)
+                        }
+                    }
                 }
                 view?.evaluateJavascript(RECHARGE_DOM_PROBE_JS) { result ->
                     appendRechargeLog(if (isPopup) "RECHARGE_POPUP_DOM" else "RECHARGE_PAGE_DOM", sanitizeJsResult(result))
@@ -398,10 +454,6 @@ private fun createRechargeWebViewClient(
     }
 }
 
-private fun String.isRechargeLoginShellUrl(): Boolean {
-    return startsWith("https://pay.neu.edu.cn/tologin.html") ||
-            startsWith("http://pay.neu.edu.cn/tologin.html")
-}
 
 private fun String.isUsefulRechargeUrl(): Boolean {
     if (isBlank()) return false
@@ -490,8 +542,8 @@ private fun appendRechargeLog(stage: String, url: String) {
         val pay = summarizeCookies(cookieManager.getCookie("https://pay.neu.edu.cn/"))
         val pass = summarizeCookies(cookieManager.getCookie("https://pass.neu.edu.cn/"))
         val line = buildString {
-            append(stage).append('\n')
-            append("URL: ").append(url).append('\n')
+            append(redactRechargeLog(stage)).append('\n')
+            append("URL: ").append(redactRechargeLog(url)).append('\n')
             append("Cookies(pay): ").append(pay).append('\n')
             append("Cookies(pass): ").append(pass)
         }

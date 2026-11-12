@@ -46,6 +46,21 @@ class ExamWidgetPresentationTest {
     )
 
     @Test
+    fun cards_hideOldFinishedExamsBeforeApplyingCardLimit() {
+        val ancient = document.exams.first().copy(date = "2000-01-01", courseName = "过期考试")
+        val future = document.exams.first().copy(date = "2100-01-01", courseName = "未结束考试")
+        val cached = document.copy(exams = List(6) { ancient } + future)
+        assertEquals(listOf("未结束考试"), ExamWidgetPresentation.cards(cached, limit = 1).map { it.courseName })
+        assertEquals(7, cached.exams.size)
+    }
+
+    @Test
+    fun emptyCopy_allCachedExamsExpiredIsNotBlank() {
+        val expired = document.copy(exams = document.exams.map { it.copy(date = "2000-01-01") })
+        assertEquals("暂无近期考试安排", ExamWidgetPresentation.emptyCopy(expired))
+    }
+
+    @Test
     fun emptyCopy_noCacheAsksToOpenExams() {
         assertEquals("打开考试同步", ExamWidgetPresentation.emptyCopy(null))
         assertEquals("暂无考试缓存", ExamWidgetPresentation.title(null))
@@ -79,14 +94,14 @@ class ExamWidgetPresentationTest {
 
     @Test
     fun cards_useLatestCachedTermAndSortByDate() {
-        val cards = ExamWidgetPresentation.cards(document)
+        val cards = ExamWidgetPresentation.cards(document, nowMillis = instant(2026, 6, 1))
         assertEquals(2, cards.size)
         assertEquals("线性代数", cards[0].courseName)
         assertEquals("2026-06-18", cards[0].dateLine)
         assertEquals("08:30-10:30", cards[0].timeLine)
         assertEquals("信息A101 · 座位 12", cards[0].placeLine)
         assertEquals("大学英语", cards[1].courseName)
-        assertEquals("", ExamWidgetPresentation.emptyCopy(document))
+        assertEquals("", ExamWidgetPresentation.emptyCopy(document, nowMillis = instant(2026, 6, 1)))
         assertEquals("2025-2026学年春季学期", ExamWidgetPresentation.title(document))
     }
 
@@ -115,7 +130,7 @@ class ExamWidgetPresentationTest {
             ).asJsonArray,
             generatedAt = "2026-10-28T12:00:00Z",
         )
-        val card = ExamWidgetPresentation.cards(dirty).single()
+        val card = ExamWidgetPresentation.cards(dirty, nowMillis = instant(2026, 10, 28)).single()
         assertEquals("决策模型与优化", card.courseName)
         assertEquals("2026-11-04", card.dateLine)
         assertEquals("13:50-15:50 · 星期三第2场", card.timeLine)
@@ -123,5 +138,12 @@ class ExamWidgetPresentationTest {
         assertTrue(!card.dateLine.contains("00:00:00"))
         assertTrue(!card.timeLine.contains("00:00:00"))
         assertTrue(!card.placeLine.contains("00:00:00"))
+    }
+
+    private fun instant(year: Int, month: Int, day: Int): Long {
+        val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Shanghai"))
+        calendar.clear()
+        calendar.set(year, month - 1, day, 12, 0, 0)
+        return calendar.timeInMillis
     }
 }

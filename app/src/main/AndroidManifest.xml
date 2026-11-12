@@ -108,6 +108,14 @@
         </receiver>
 
         <receiver
+            android:name=".widget.ExamWidgetVisibilityReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.neko.neuecode.widget.ACTION_EXAM_VISIBILITY" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".widget.ScheduleWeekWidgetProvider"
             android:exported="false"
             android:label="课表·单日">

@@ -56,6 +56,22 @@ class JwxtCasCryptoTest {
     }
 
     @Test
+    fun looksLikeSmsChallenge_ignoresNewLoginPageSecondAuthScriptTemplate() {
+        val html = """
+            <form id="loginForm" action="/tpass/login">
+              <input id="un" name="un" /><input id="pd" name="pd" type="password" />
+            </form>
+            <script id="second_auth_template" type="text/html">
+              <div>为保障您的账号安全，当前设备需进行身份验证</div>
+              <div>绑定手机尾号：*******1233</div>
+              <span>获取验证码</span>
+            </script>
+            <script src="/tpass/comm/neu/js/login_neu_new.js"></script>
+        """.trimIndent()
+        assertFalse(JwxtCasCrypto.looksLikeSmsChallenge(html))
+    }
+
+    @Test
     fun extractLoginScriptUrl_findsVersionedLoginNeu() {
         val html = """
             <script src="/tpass/comm/neu/js/rsa.js"></script>

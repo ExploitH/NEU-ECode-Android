@@ -1,6 +1,10 @@
 package com.neko.neuecode.data.remote.jwxt
 
 import com.neko.neuecode.data.remote.NeuCampusHttp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -11,6 +15,9 @@ open class JwxtAuthenticationException(message: String) : IOException(message)
 class JwxtHumanVerificationRequired(
     message: String,
     val challenge: CasSecondAuthChallenge? = null,
+    // In-memory only: preserve live hidden fields/scripts for the human-verification WebView.
+    val pageHtml: String? = null,
+    val pageUrl: String? = null,
 ) : JwxtAuthenticationException(message)
 
 data class JwxtCasLoginResult(
@@ -25,7 +32,6 @@ class JwxtCasAuthenticator(
 ) {
     companion object {
         const val DEFAULT_LOGIN_ENDPOINT = "https://pass.neu.edu.cn/tpass/login"
-        private val mfaPattern = Regex("登录码已发送|输入验证码|手机验证码|动态验证码|二次认证|图形验证码|当前设备需进行身份验证|绑定手机尾号")
         private val failurePattern = Regex("账号或密码错误|登录失败|认证失败|剩余.{0,20}次")
     }
 
@@ -34,7 +40,30 @@ class JwxtCasAuthenticator(
         .followSslRedirects(true)
         .build()
 
-    fun login(username: String, password: String, service: String): JwxtCasLoginResult {
+    fun login(username: String, password: String, service: String): JwxtCasLoginResult =
+        loginFlow(username, password, service) { request ->
+            http.newCall(request).execute().readCasBody()
+        }
+
+    /** Cancels only this login's calls, including body reads, before releasing the caller. */
+    suspend fun loginCancellable(username: String, password: String, service: String): JwxtCasLoginResult =
+        withContext(Dispatchers.IO) {
+            loginFlow(username, password, service) { request ->
+                // Also check between page parsing, key extraction/encryption and the password POST.
+                currentCoroutineContext().ensureActive()
+                val response = http.newCall(request).awaitBody()
+                currentCoroutineContext().ensureActive()
+                response
+            }.also { currentCoroutineContext().ensureActive() }
+        }
+
+    // Inline keeps the exact same parsing/submission flow for synchronous and suspending callers.
+    private inline fun loginFlow(
+        username: String,
+        password: String,
+        service: String,
+        fetch: (Request) -> CasHttpResponse,
+    ): JwxtCasLoginResult {
         val serviceUrl = service.toHttpUrl()
         if (serviceUrl.scheme != "https" || !serviceUrl.host.endsWith("neu.edu.cn")) {
             throw JwxtAuthenticationException("CAS service must be an HTTPS neu.edu.cn URL")
@@ -42,17 +71,17 @@ class JwxtCasAuthenticator(
         val loginUrl = loginEndpoint.toHttpUrl().newBuilder()
             .addQueryParameter("service", service)
             .build()
-        val page = http.newCall(
+        val page = fetch(
             Request.Builder()
                 .url(loginUrl)
                 .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
                 .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
                 .get()
                 .build()
-        ).execute()
-        val pageUrl = page.request.url
+        )
+        val pageUrl = page.url
         val pageCode = page.code
-        val pageBody = page.use { it.body?.string().orEmpty() }
+        val pageBody = page.body
         if (NeuCampusHttp.casAlreadyAuthenticated(
                 host = pageUrl.host,
                 path = pageUrl.encodedPath,
@@ -73,21 +102,21 @@ class JwxtCasAuthenticator(
             throw JwxtHumanVerificationRequired(
                 "CAS requires live SMS/CAPTCHA/device verification",
                 CasSecondAuthParser.parse(pageBody, pageUrl.toString()),
+                pageHtml = pageBody,
+                pageUrl = pageUrl.toString(),
             )
         }
         val scriptUrl = JwxtCasCrypto.extractLoginScriptUrl(pageBody, pageUrl.toString())
             ?: throw JwxtAuthenticationException("CAS RSA public key is unavailable")
-        val js = http.newCall(
+        val script = fetch(
             Request.Builder()
                 .url(scriptUrl)
                 .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
                 .get()
                 .build()
-        ).execute().use { response ->
-            if (!response.isSuccessful) throw JwxtAuthenticationException("CAS RSA public key is unavailable")
-            response.body?.string().orEmpty()
-        }
-        val publicKey = JwxtCasCrypto.extractPublicKeyFromJs(js)
+        )
+        if (!script.isSuccessful) throw JwxtAuthenticationException("CAS RSA public key is unavailable")
+        val publicKey = JwxtCasCrypto.extractPublicKeyFromJs(script.body)
         val submission = JwxtCasCrypto.buildLoginSubmission(
             pageHtml = pageBody,
             pageUrl = pageUrl.toString(),
@@ -98,17 +127,17 @@ class JwxtCasAuthenticator(
         val form = FormBody.Builder().apply {
             submission.fields.forEach { (key, value) -> add(key, value) }
         }.build()
-        val result = http.newCall(
+        val result = fetch(
             Request.Builder()
                 .url(submission.action)
-                .header("Referer", page.request.url.toString())
+                .header("Referer", pageUrl.toString())
                 .header("User-Agent", NeuCampusHttp.BROWSER_USER_AGENT)
                 .post(form)
                 .build()
-        ).execute()
-        val resultUrl = result.request.url
+        )
+        val resultUrl = result.url
         val resultCode = result.code
-        val resultBody = result.use { it.body?.string().orEmpty() }
+        val resultBody = result.body
         val finalHost = resultUrl.host
         if (NeuCampusHttp.isEcodeIntermediateLanding(resultCode, finalHost)) {
             return JwxtCasLoginResult(
@@ -120,10 +149,12 @@ class JwxtCasAuthenticator(
         if (!result.isSuccessful) {
             throw JwxtAuthenticationException("CAS password login did not complete")
         }
-        if (mfaPattern.containsMatchIn(resultBody) || CasSecondAuthParser.isChallengeHtml(resultBody)) {
+        if (JwxtCasCrypto.looksLikeSmsChallenge(resultBody)) {
             throw JwxtHumanVerificationRequired(
                 "CAS requires live SMS/CAPTCHA/device verification",
                 CasSecondAuthParser.parse(resultBody, resultUrl.toString()),
+                pageHtml = resultBody,
+                pageUrl = resultUrl.toString(),
             )
         }
         val stillHasForm = resultBody.contains("id=\"loginForm\"", ignoreCase = true) ||

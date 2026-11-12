@@ -23,6 +23,8 @@ object CasSecondAuthParser {
         "当前设备需进行身份验证",
         "绑定手机尾号",
         "获取验证码",
+        "输入验证码",
+        "图形验证码",
         "二次认证",
         "登录码已发送",
         "动态验证码",
@@ -42,32 +44,50 @@ object CasSecondAuthParser {
         if (!isChallengeHtml(html)) {
             return CasSecondAuthChallenge(isPresent = false)
         }
-        val form = extractForm(html, pageUrl)
-        val captchaSrc = extractCaptchaSrc(html)
-        val matcher = phonePattern.matcher(html)
+        val activeHtml = removeInertBlocks(html)
+        val form = extractForm(activeHtml, pageUrl)
+        val captchaSrc = extractCaptchaSrc(activeHtml)
+        val matcher = phonePattern.matcher(activeHtml)
         val maskedPhone = if (matcher.find()) matcher.group() else null
         return CasSecondAuthChallenge(
             isPresent = true,
             maskedPhone = maskedPhone,
             formAction = form?.action.orEmpty().ifBlank { pageUrl },
             captchaSrc = captchaSrc,
-            needsGraphicCaptcha = html.contains("imgCode") || html.contains("codeImage") || html.contains("图形验证码"),
+            needsGraphicCaptcha = activeHtml.contains("imgCode") ||
+                activeHtml.contains("codeImage") || activeHtml.contains("图形验证码"),
             needsSmsCode = true,
             fields = form?.fields.orEmpty(),
         )
     }
 
     fun isChallengeHtml(html: String): Boolean {
-        if (html.contains("id=\"loginForm\"", ignoreCase = true) &&
-            html.contains("id=\"un\"") &&
-            html.contains("id=\"pd\"") &&
-            !html.contains("当前设备需进行身份验证") &&
-            !html.contains("second_auth_form")
+        val activeHtml = removeInertBlocks(html)
+        if (hasElementId(activeHtml, "loginForm") &&
+            hasElementId(activeHtml, "un") &&
+            hasElementId(activeHtml, "pd") &&
+            !activeHtml.contains("当前设备需进行身份验证") &&
+            !hasElementId(activeHtml, "second_auth_form") &&
+            !activeHtml.contains("图形验证码")
         ) {
             return false
         }
-        return VISIBLE_MARKERS.any { html.contains(it) }
+        return VISIBLE_MARKERS.any { activeHtml.contains(it) }
     }
+
+    // The new password page contains a second-auth script[type=text/html]
+    // template. Templates and script text are not an active challenge.
+    // This strips inert blocks, not arbitrary CSS-hidden elements.
+    private fun removeInertBlocks(html: String): String = html
+        .replace(Regex("<!--[\\s\\S]*?-->"), "")
+        .replace(Regex("<script\\b[^>]*>[\\s\\S]*?</script\\s*>", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("<template\\b[^>]*>[\\s\\S]*?</template\\s*>", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("<style\\b[^>]*>[\\s\\S]*?</style\\s*>", RegexOption.IGNORE_CASE), "")
+
+    private fun hasElementId(html: String, id: String): Boolean = Regex(
+        """<\w+\b[^>]*\bid\s*=\s*["']${Regex.escape(id)}["']""",
+        RegexOption.IGNORE_CASE,
+    ).containsMatchIn(html)
 
     fun sendCodeRequest(pageUrl: String, graphicCaptcha: String): CasSecondAuthRequest {
         val url = URI(pageUrl).resolve("/tpass/secondAuthCode").toString()

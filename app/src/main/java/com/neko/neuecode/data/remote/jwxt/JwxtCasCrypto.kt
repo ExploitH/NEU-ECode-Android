@@ -13,18 +13,6 @@ data class JwxtCasSubmission(
 )
 
 object JwxtCasCrypto {
-    private val VISIBLE_SMS_MARKERS = listOf(
-        "登录码已发送",
-        "输入验证码",
-        "手机验证码",
-        "动态验证码",
-        "二次认证",
-        "当前设备需进行身份验证",
-        "绑定手机尾号",
-        "scendAuthCode",
-        "second_auth_form",
-        "login_second.js",
-    )
     private val inputPattern = Pattern.compile(
         "<input\\b[^>]*>",
         Pattern.CASE_INSENSITIVE
@@ -77,8 +65,7 @@ object JwxtCasCrypto {
     }
 
     fun looksLikeSmsChallenge(html: String): Boolean {
-        return CasSecondAuthParser.isChallengeHtml(html) ||
-            VISIBLE_SMS_MARKERS.any { html.contains(it) }
+        return CasSecondAuthParser.isChallengeHtml(html)
     }
 
     fun extractLoginScriptUrl(pageHtml: String, pageUrl: String): String? {

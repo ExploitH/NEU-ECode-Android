@@ -17,6 +17,7 @@ class ScheduleWidgetRefreshWorker(
     override suspend fun doWork(): Result {
         return try {
             ScheduleWidgetUpdater.updateAll(applicationContext)
+            ExamWidgetProvider.updateAll(applicationContext)
             Timber.d("Schedule widget fallback refresh completed")
             Result.success()
         } catch (error: Exception) {

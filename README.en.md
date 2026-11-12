@@ -6,7 +6,7 @@
 NEU eCode Android re-stages pay-code, timetable, grades/exams, and campus-intranet access in Kotlin, Jetpack Compose, and Material 3 — a clean, restrained, auditable client for everyday campus work.
 
 Website: [https://ecode.exploith.com](https://ecode.exploith.com)  
-Current public release: **7.7** (`versionCode 77`)
+Current public release: **7.8** (`versionCode 78`)
 
 > This public repository is a sanitized Android client source release. It does **not** include backend source code, Cloudflare Worker source code, private deployment config, private account data, session cookies, signing keys, private APK download links, raw protocol key material, or raw diagnostic logs.
 
@@ -59,11 +59,11 @@ Read [SECURITY.md](SECURITY.md) before opening a public issue. Do not attach cre
 
 The bottom bar has only three destinations: **Pay code / Timetable / Me**. Recharge, intranet, the eCode WebView, grades, and exams remain secondary screens.
 
-| Surface | In 7.7 |
+| Surface | In 7.8 |
 |---|---|
 | Pay code | Native QR plus balance. The eCode master switch is off by default; when unused, the app neither fetches nor auto-refreshes pay codes. The master switch is separate from “auto-refresh QR”. A CAS SMS challenge turns auto-refresh off and leaves eCode itself enabled. |
 | Timetable | Read-only JWXT: a 7×12 grid, term picker, local term settings, album-style week paging. Weeks start on Sunday by default and can switch back to Monday. Cells are computed per week, with one neighbour prefetched on each side. |
-| Grades / exams | Secondary pages under Me. Term names are shown in Chinese. The My Exams home widget reads local cache only — no live fetch, no campus ping. |
+| Grades / exams | Secondary pages under Me. Term names are shown in Chinese. The My Exams home widget reads local cache only and keeps unfinished exams and those completed within seven days. No automatic sync or campus ping; the in-app history remains complete. |
 | Campus intranet | In-app official OpenVPN 3 student tunnel, split so public traffic stays off the tunnel. Idle / Connecting / Connected Lottie states. |
 | Home widgets | Pay code, a date-switchable single-day timetable, and My Exams. |
 | Me | Long-term login, intranet connection, in-app notices, about/agreement, cache cleanup. |
@@ -205,7 +205,8 @@ Current release line (newest first):
 
 | Version | versionCode | Notes |
 |---|---|---|
-| **7.7** | **77** | In-app developer notices; fix CAS graphic captcha false “wrong code”; exam widget splits date/time/place; notice dots no longer clip |
+| **7.8** | **78** | Support the updated CAS login page; restore campus-card recharge sessions and preserve verification state; hide widget exams more than seven days after they finish |
+| 7.7 | 77 | In-app developer notices; fix CAS graphic captcha false “wrong code”; exam widget splits date/time/place; notice dots no longer clip |
 | 7.6 | 76 | Redesign main screens with a unified palette and system dark mode; restage pay-code, timetable, and Me; slide the bottom bar by tab order; fix the false unknown-error after logout |
 | 7.5 | 75 | Add grades/exams lookup and a My Exams home widget; Chinese term names; exams do not auto-refresh |
 | 7.4.1 | 74 | Sunday-first weeks now open on today's display week instead of stalling on week 1 |

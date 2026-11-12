@@ -1,12 +1,16 @@
 package com.neko.neuecode.widget
 
 import com.neko.neuecode.domain.jwxt.ExamDisplayFormatter
+import com.neko.neuecode.domain.jwxt.ExamWidgetVisibility
+import com.neko.neuecode.domain.jwxt.JwxtExam
 import com.neko.neuecode.domain.jwxt.JwxtExamDocument
 import com.neko.neuecode.domain.jwxt.displayName
+import java.util.TimeZone
 
 object ExamWidgetPresentation {
     const val kicker = "我的考试"
     const val emptyTermCopy = "本学期暂无考试安排"
+    const val noRecentCopy = "暂无近期考试安排"
     const val missingCacheTitle = "暂无考试缓存"
     const val missingCacheCopy = "打开考试同步"
 
@@ -22,15 +26,21 @@ object ExamWidgetPresentation {
         return document?.term?.displayName?.takeIf { it.isNotBlank() } ?: missingCacheTitle
     }
 
-    fun emptyCopy(document: JwxtExamDocument?): String {
+    fun emptyCopy(document: JwxtExamDocument?, nowMillis: Long = System.currentTimeMillis()): String {
         if (document == null) return missingCacheCopy
         if (document.exams.isEmpty()) return emptyTermCopy
+        if (visibleExams(document, nowMillis).isEmpty()) return noRecentCopy
         return ""
     }
 
-    fun cards(document: JwxtExamDocument?, limit: Int = 6): List<Card> {
+    fun cards(
+        document: JwxtExamDocument?,
+        limit: Int = 6,
+        nowMillis: Long = System.currentTimeMillis(),
+        timeZone: TimeZone = TimeZone.getDefault(),
+    ): List<Card> {
         if (document == null) return emptyList()
-        return document.exams
+        return visibleExams(document, nowMillis, timeZone)
             .sortedWith(compareBy({ it.date }, { it.startTime }, { it.courseNo }))
             .take(limit)
             .map { exam ->
@@ -45,4 +55,10 @@ object ExamWidgetPresentation {
                 )
             }
     }
+
+    private fun visibleExams(
+        document: JwxtExamDocument,
+        nowMillis: Long,
+        timeZone: TimeZone = TimeZone.getDefault(),
+    ): List<JwxtExam> = document.exams.filter { ExamWidgetVisibility.visible(it, nowMillis, timeZone) }
 }

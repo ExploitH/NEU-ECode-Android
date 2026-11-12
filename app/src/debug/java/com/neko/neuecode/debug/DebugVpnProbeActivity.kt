@@ -37,6 +37,7 @@ import com.neko.neuecode.domain.ecode.PayCodeParseResult
 import com.neko.neuecode.domain.model.Result
 import com.neko.neuecode.domain.vpn.StudentVpnPhase
 import com.neko.neuecode.ui.theme.NeuECodeTheme
+import com.neko.neuecode.ui.screen.recharge.RechargeScreen
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -70,6 +71,14 @@ class DebugVpnProbeActivity : ComponentActivity() {
         if (user.isNotBlank() && pass.isNotBlank()) {
             credentials.save(user, pass)
             Timber.i("debug vpn seeded long-term login username length=%s", user.length)
+        }
+        if (intent.getBooleanExtra("recharge", false)) {
+            setContent {
+                NeuECodeTheme {
+                    RechargeScreen(onBack = { finish() })
+                }
+            }
+            return
         }
         setContent {
             NeuECodeTheme {
